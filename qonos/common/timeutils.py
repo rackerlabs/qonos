@@ -89,7 +89,7 @@ def utcnow():
     """Overridable version of utils.utcnow."""
     if utcnow.override_time_seq:
         return _utcnow_override_time()
-    return datetime.datetime.utcnow()
+    return datetime.datetime.utcnow().replace(tzinfo=None)
 
 
 def _utcnow_override_time():
