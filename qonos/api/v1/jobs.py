@@ -87,6 +87,8 @@ class JobsController(object):
         if expected_next_run:
             try:
                 expected_next_run = timeutils.parse_isotime(expected_next_run)
+                expected_next_run = timeutils.strtime(expected_next_run,
+                                                      timeutils.TIMEFORMAT)
             except ValueError as e:
                 msg = _('Invalid "next_run" value. Must be ISO 8601 format')
                 raise webob.exc.HTTPBadRequest(explanation=msg)
