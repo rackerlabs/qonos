@@ -874,3 +874,21 @@ class TestMigrations(utils.BaseTestCase):
             jobs.c.version_id != None).execute().fetchall()
         actual_job_ids = set(row['id'] for row in results)
         self.assertEqual(actual_job_ids, expected_job_ids)
+
+    def _check_011(self, engine, data):
+        table = "job_metadata"
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        self.assertTrue(len(new_table.foreign_keys), 1)
+
+    def _check_012(self, engine, data):
+        table = "schedule_metadata"
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        self.assertTrue(len(new_table.foreign_keys), 1)
