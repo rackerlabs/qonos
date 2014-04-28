@@ -70,7 +70,9 @@ function run_pep8 {
   srcfiles=`find qonos -type f -name "*.py" ! -wholename "qonos\/openstack*"`
   srcfiles+=" `find bin -type f ! -name "qonos.conf*" ! -name "*api-paste.ini*" ! -name "*~"`"
   srcfiles+=" `find tools -type f -name "*.py"`"
-  srcfiles+=" `find smoketests -type f -name "*.py"`"
+  #Note(sandeep): making the smoketests file not found error silent temporarily as there is no
+  # smoketests available for qonos at this moment.
+  srcfiles+=" `find smoketests -type f -name "*.py" 2>>/dev/null`"
   srcfiles+=" setup.py"
 
   # Until all these issues get fixed, ignore.
