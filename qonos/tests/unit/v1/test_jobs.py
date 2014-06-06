@@ -15,8 +15,6 @@
 #    under the License.
 
 import datetime
-from functools import wraps
-import mock
 import uuid
 import webob.exc
 
@@ -31,51 +29,6 @@ from qonos.tests import utils as test_utils
 
 
 JOB_ATTRS = ['id', 'schedule_id', 'worker_id', 'retry_count', 'status']
-
-
-def setup_error_job(reached_max_retry=False,
-                    exceeded_hard_timeout=False):
-    def decorate_job_failure(fn):
-        @wraps(fn)
-        def wrap_job_failure(*args, **kwargs):
-            try:
-                org_generate_notification = utils.generate_notification
-                utils.generate_notification = mock.Mock()
-
-                job_retry_count = 1 if reached_max_retry else 0
-
-                now = timeutils.utcnow()
-                timeout = now + datetime.timedelta(hours=2)
-                if exceeded_hard_timeout:
-                    hard_timeout = now - datetime.timedelta(hours=4)
-                else:
-                    hard_timeout = now + datetime.timedelta(hours=4)
-
-                fixture = {
-                    'id': unit_utils.JOB_UUID6,
-                    'schedule_id': unit_utils.SCHEDULE_UUID2,
-                    'tenant': unit_utils.TENANT2,
-                    'worker_id': unit_utils.WORKER_UUID2,
-                    'action': 'snapshot',
-                    'status': 'ERROR',
-                    'timeout': timeout,
-                    'hard_timeout': hard_timeout,
-                    'retry_count': job_retry_count,
-                    'job_metadata': [
-                            {
-                            'key': 'instance_id',
-                            'value': 'my_instance',
-                            },
-                        ]
-                }
-                db_api.job_create(fixture)
-
-                return fn(*args, **kwargs)
-            finally:
-                utils.generate_notification = org_generate_notification
-                db_api.job_delete(unit_utils.JOB_UUID6)
-        return wrap_job_failure
-    return decorate_job_failure
 
 
 class TestJobsApi(test_utils.BaseTestCase):
@@ -538,92 +491,3 @@ class TestJobsApi(test_utils.BaseTestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update_status,
                           request, job_id, body)
-
-    @setup_error_job(reached_max_retry=False, exceeded_hard_timeout=False)
-    def test_update_status_for_error_job(self):
-        self.config(max_retry=1, group='action_default')
-        timeout = datetime.datetime(2012, 11, 16, 22, 0)
-        request = unit_utils.get_fake_request(method='PUT')
-        body = {'status': {'status': 'ERROR', 'timeout': str(timeout)}}
-        job_2_1 = db_api.job_get_by_id(unit_utils.JOB_UUID6)
-        job_status = self.controller.update_status(request,
-                                                   job_2_1['id'],
-                                                   body)['status']
-        actual_status = job_status['status']
-        actual_timeout = job_status['timeout']
-        self.assertEqual(actual_status, body['status']['status'])
-        self.assertEqual(actual_timeout, timeout)
-        self.assertEqual(0, utils.generate_notification.call_count)
-
-    @setup_error_job(reached_max_retry=True)
-    def test_error_job_send_failed_notification_on_reaching_max_retry(self):
-        self.config(max_retry=1, group='action_default')
-        timeout = datetime.datetime(2012, 11, 16, 22, 0)
-        request = unit_utils.get_fake_request(method='PUT')
-        job_err_msg = "Couldn't process job. Reached max retries"
-        body = {'status': {
-            'status': 'ERROR',
-            'error_message': job_err_msg,
-            'timeout': str(timeout)
-        }}
-        err_job = db_api.job_get_by_id(unit_utils.JOB_UUID6)
-        job_status = self.controller.update_status(request,
-                                                   err_job['id'],
-                                                   body)['status']
-        actual_status = job_status['status']
-        actual_timeout = job_status['timeout']
-        self.assertEqual(actual_status, body['status']['status'])
-        self.assertEqual(actual_timeout, timeout)
-        self.assertEqual(1, utils.generate_notification.call_count)
-
-        err_job['error_message'] = job_err_msg
-        job_payload_matcher = ErrorJobPayloadMatcher({'job': err_job})
-        utils.generate_notification.assert_called_once_with(
-            None,
-            'qonos.job.failed',
-            job_payload_matcher,
-            'ERROR')
-
-    @setup_error_job(exceeded_hard_timeout=True)
-    def test_error_job_send_failed_notification_on_exceed_hard_timeout(self):
-        self.config(max_retry=1, group='action_default')
-        timeout = datetime.datetime(2012, 11, 16, 22, 0)
-        request = unit_utils.get_fake_request(method='PUT')
-        body = {'status': {'status': 'ERROR', 'timeout': str(timeout)}}
-        err_job = db_api.job_get_by_id(unit_utils.JOB_UUID6)
-        job_status = self.controller.update_status(request,
-                                                   err_job['id'],
-                                                   body)['status']
-        actual_status = job_status['status']
-        actual_timeout = job_status['timeout']
-        self.assertEqual(actual_status, body['status']['status'])
-        self.assertEqual(actual_timeout, timeout)
-        job_payload_matcher = ErrorJobPayloadMatcher({'job': err_job})
-        utils.generate_notification.assert_called_once_with(
-            None,
-            'qonos.job.failed',
-            job_payload_matcher,
-            'ERROR')
-
-
-class ErrorJobPayloadMatcher(object):
-    def __init__(self, err_job):
-        self.err_job = err_job
-
-    def __eq__(self, other):
-        return self.compare(self.err_job, other)
-
-    @staticmethod
-    def compare(err_job, payload):
-        if (type(err_job) != type(payload)
-                or err_job['job']['id'] != payload['job']['id']
-                or err_job['job']['status'] != payload['job']['status']
-                or err_job['job']['status'] not in ['ERROR']):
-            return False
-
-        job_err_msg = err_job['job'].get('error_message', '')
-        if ('error_message' not in payload['job']
-                or payload['job']['error_message'] != job_err_msg):
-            return False
-
-        return True
