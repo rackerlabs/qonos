@@ -58,6 +58,8 @@ snapshot_worker_opts = [
                       'seconds')),
     cfg.IntOpt('job_timeout_backoff_factor', default=1,
                help=_('Timeout multiplier to use when an error occurs')),
+    cfg.IntOpt('max_retry', default=5,
+               help=_('Maximum number of tries that a job can be processed')),
 ]
 
 CONF = cfg.CONF
@@ -81,6 +83,7 @@ class SnapshotProcessor(worker.JobProcessor):
     def init_processor(self, worker, nova_client_factory=None):
         super(SnapshotProcessor, self).init_processor(worker)
         self.current_job = None
+        self.max_retry = CONF.snapshot_worker.max_retry
         self.timeout_count = 0
         self.timeout_max_updates = CONF.snapshot_worker.job_timeout_max_updates
         self.next_timeout = None
@@ -133,6 +136,26 @@ class SnapshotProcessor(worker.JobProcessor):
             self.send_notification_retry(payload)
 
         job_id = job['id']
+
+        hard_timed_out = job['hard_timeout'] <= self._get_utcnow()
+        if hard_timed_out:
+            msg = ('Job %(job_id)s has reached/exceeded its'
+                   ' hard timeout: %(hard_timeout)s.' %
+                   {'job_id': job_id, 'hard_timeout': job['hard_timeout']})
+            self._job_hard_timed_out(job, msg)
+            LOG.info(_('Worker %(worker_id)s Job hard timed out: %(msg)s') %
+                     {'worker_id': self.worker.worker_id, 'msg': msg})
+            return
+
+        max_retried = job['retry_count'] > self.max_retry
+        if max_retried:
+            msg = ('Job %(job_id)s has reached/exceeded its'
+                   ' max_retry count: %(retry_count)s.' %
+                   {'job_id': job_id, 'retry_count': job['retry_count']})
+            self._job_max_retried(job, msg)
+            LOG.info(_('Worker %(worker_id)s Job max_retry reached: %(msg)s') %
+                     {'worker_id': self.worker.worker_id, 'msg': msg})
+            return
 
         schedule = self._get_schedule(job)
         if schedule is None:
@@ -454,6 +477,20 @@ class SnapshotProcessor(worker.JobProcessor):
 
     def _job_cancelled(self, job, message):
         response = self.update_job(job['id'], 'CANCELLED',
+                                   error_message=message)
+        if response:
+            self._update_job_with_response(job, response)
+        self.send_notification_job_failed({'job': job})
+
+    def _job_hard_timed_out(self, job, message):
+        response = self.update_job(job['id'], 'HARD_TIMED_OUT',
+                                   error_message=message)
+        if response:
+            self._update_job_with_response(job, response)
+        self.send_notification_job_failed({'job': job})
+
+    def _job_max_retried(self, job, message):
+        response = self.update_job(job['id'], 'MAX_RETRIED',
                                    error_message=message)
         if response:
             self._update_job_with_response(job, response)

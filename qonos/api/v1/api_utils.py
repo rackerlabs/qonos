@@ -104,10 +104,3 @@ def get_new_timeout_by_action(action):
         group = 'action_default'
     job_timeout_seconds = CONF.get(group).timeout_seconds
     return now + datetime.timedelta(seconds=job_timeout_seconds)
-
-
-def job_get_max_retry(action):
-    group = 'action_' + action
-    if group not in CONF:
-        group = 'action_default'
-    return CONF.get(group).max_retry
