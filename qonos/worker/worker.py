@@ -14,16 +14,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import os
 import signal
 import socket
-import sys
 import time
-import traceback as tb
 
 from oslo.config import cfg
 
-from qonos.common import exception
 from qonos.common import utils
 from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import importutils
@@ -47,6 +45,8 @@ worker_opts = [
     cfg.StrOpt('processor_class', default=None,
                help=_('The fully qualified class name of the processor '
                       'to use in this worker')),
+    cfg.BoolOpt('fork_job_process', default=False,
+                help=_('True to fork a child process for job processing')),
 ]
 
 CONF = cfg.CONF
@@ -65,6 +65,7 @@ class Worker(object):
         self.host = socket.gethostname()
         self.running = False
         self.pid = None
+        self._child_pid = None
 
     def run(self, run_once=False, poll_once=False):
         LOG.info(_('Starting qonos worker service'))
@@ -79,6 +80,8 @@ class Worker(object):
                                       signal_map=signal_map):
                 self._run_loop(run_once, poll_once)
         else:
+            for sig, action in self._signal_map().iteritems():
+                signal.signal(sig, action)
             self._run_loop(run_once, poll_once)
 
     def _signal_map(self):
@@ -93,31 +96,67 @@ class Worker(object):
         self.processor.init_processor(self)
         self.worker_id = self._register_worker()
 
-    def process_job(self, job):
-        LOG.debug(_('Processing job: %s') % job)
+    def _process_job(self, job):
+        """Method that invokes the JobProcessor.process_job with the given job.
+
+        This method is common for both inline and forked job processing.
+        Invoked by process_job() and child_process_main() methods
+        """
         try:
             self.processor.process_job(job)
-        except exception.PollingException as e:
-            LOG.exception(e)
-        except Exception:
+        except Exception as e:
             msg = _("Worker %(worker_id)s Error processing job:"
                     " %(job)s")
             LOG.exception(msg % {'worker_id': self.worker_id,
                                  'job': job['id']})
+            self.update_job(job['id'], 'ERROR', error_message=unicode(e))
 
-            exc_type, exc_value, exc_tb = sys.exc_info()
-            err_msg = (_('Job Process Failed: %s')
-                       % tb.format_exception_only(exc_type, exc_value))
-            response = self.update_job(job['id'],
-                                       'ERROR',
-                                       error_message=err_msg)
-            if self.processor:
-                if response:
-                    job['status'] = response.get('status')
-                    job['timeout'] = response.get('timeout')
-                job['error_message'] = err_msg
-                self.processor.send_notification_job_update({'job': job},
-                                                            level='ERROR')
+    def process_job(self, job):
+        LOG.debug(_('Processing job: %s') % job)
+
+        if CONF.worker.fork_job_process:
+            self._fork_process_job(job)
+        else:
+            self._process_job(job)
+
+    def _fork_process_job(self, job):
+        """This method forks a child process and waits for it to complete."""
+
+        child_pid = os.fork()
+        if child_pid == 0:
+            self.child_process_main(job)
+        else:
+            self._child_pid = child_pid
+
+            LOG.debug(_("Worker %(worker_id)s forked %(child_pid)s "
+                        "for processing job %(job_id)s") %
+                      {'worker_id': self.worker_id,
+                       'child_pid': self._child_pid,
+                       'job_id': job['id']})
+
+            while True:
+                try:
+                    os.waitpid(child_pid, 0)
+                    break
+                except OSError as e:
+                    if e.errno != errno.EINTR:
+                        raise
+
+            LOG.debug(_("End of processing of job %(job_id)s "
+                        "by forked %(child_pid)s from "
+                        "worker %(worker_id)s") %
+                      {'worker_id': self.worker_id,
+                       'child_pid': self._child_pid,
+                       'job_id': job['id']})
+
+    def child_process_main(self, job):
+        """This is the entry point of the newly spawned child process."""
+
+        self._process_job(job)
+
+        # os._exit() is the way to exit from childs after a fork(), in
+        # constrast to the regular sys.exit()
+        os._exit(0)
 
     def _run_loop(self, run_once=False, poll_once=False):
         self.init_worker()
@@ -131,6 +170,8 @@ class Worker(object):
                     self.process_job(job)
                 except Exception as e:
                     LOG.exception(e)
+                finally:
+                    self._child_pid = None
 
             time_after = time.time()
 
@@ -168,7 +209,11 @@ class Worker(object):
     def _terminate(self, signum, frame):
         LOG.debug(_('Received signal %s - will exit') % str(signum))
         self.running = False
-        self.processor.stop_processor()
+
+        if CONF.worker.fork_job_process and self._child_pid:
+            os.kill(self._child_pid, signal.SIGTERM)
+        else:
+            self.processor.stop_processor()
 
     def _poll_for_next_job(self, poll_once=False):
         job = None

@@ -93,13 +93,28 @@ class SnapshotProcessor(worker.JobProcessor):
         self.nova_client_factory = nova_client_factory
 
     def process_job(self, job):
-        LOG.info(_("Worker %(worker_id)s Processing job: %(job)s") %
+        LOG.info(_("Worker %(worker_id)s processing job: %(job)s") %
                  {'worker_id': self.worker.worker_id,
                      'job': job['id']})
-        LOG.debug(_("Worker %(worker_id)s Processing job: %(job)s") %
+        LOG.debug(_("Worker %(worker_id)s processing job: %(job)s") %
                   {'worker_id': self.worker.worker_id,
                    'job': str(job)})
+        try:
+            self._process_job(job)
+        except exc.PollingException as e:
+            LOG.exception(e)
+        except Exception:
+            msg = _("Worker %(worker_id)s error processing job:"
+                    " %(job)s")
+            LOG.exception(msg % {'worker_id': self.worker.worker_id,
+                                 'job': job['id']})
 
+            exc_type, exc_value, exc_tb = sys.exc_info()
+            err_msg = (_('Job process failed: %s')
+                       % tb.format_exception_only(exc_type, exc_value))
+            self._job_error_occurred(job, error_message=err_msg)
+
+    def _process_job(self, job):
         payload = {'job': job}
         if job['status'] == 'QUEUED':
             self.send_notification_start(payload)
@@ -114,7 +129,7 @@ class SnapshotProcessor(worker.JobProcessor):
                    {'schedule_id': job['schedule_id'], 'job_id': job_id})
             self._job_cancelled(job, msg)
 
-            LOG.info(_('Worker %(worker_id)s Job cancelled: %(msg)s') %
+            LOG.info(_('Worker %(worker_id)s job cancelled: %(msg)s') %
                      {'worker_id': self.worker.worker_id,
                       'msg': msg})
             return
@@ -140,7 +155,7 @@ class SnapshotProcessor(worker.JobProcessor):
             if image_id is None:
                 return
         else:
-            LOG.info(_("Worker %(worker_id)s Resuming image: %(image_id)s")
+            LOG.info(_("Worker %(worker_id)s resuming image: %(image_id)s")
                      % {'worker_id': self.worker.worker_id,
                         'image_id': image_id})
 
@@ -214,7 +229,7 @@ class SnapshotProcessor(worker.JobProcessor):
 
         try:
             instance_name_msg = ("Attempting to get the instance name for "
-                               "instance_id %s" % instance_id)
+                                 "instance_id %s" % instance_id)
             LOG.info(instance_name_msg)
             server_name = self._get_nova_client().servers.\
                 get(instance_id).name
@@ -233,7 +248,7 @@ class SnapshotProcessor(worker.JobProcessor):
             self._job_error_occurred(job, error_message=msg)
             return None
 
-        LOG.info(_("Worker %(worker_id)s Started create image: "
+        LOG.info(_("Worker %(worker_id)s started create image: "
                    " %(image_id)s") % {'worker_id': self.worker.worker_id,
                                        'image_id': image_id})
 
@@ -305,19 +320,18 @@ class SnapshotProcessor(worker.JobProcessor):
 
             if len(scheduled_images) > retention:
                 to_delete = scheduled_images[retention:]
-                LOG.info(_('Worker %(worker_id)s '
-                           'Removing %(remove)d images for a retention '
-                           'of %(retention)d')
-                          % {'worker_id': self.worker.worker_id,
-                             'remove': len(to_delete),
-                             'retention': retention})
+                LOG.info(_('Worker %(worker_id)s removing %(remove)d '
+                           'images for a retention of %(retention)d') %
+                         {'worker_id': self.worker.worker_id,
+                          'remove': len(to_delete),
+                          'retention': retention})
                 for image in to_delete:
                     image_id = image.id
                     self._get_nova_client().images.delete(image_id)
-                    LOG.info(_('Worker %(worker_id)s Removed image '
-                               '%(image_id)s')
-                              % {'worker_id': self.worker.worker_id,
-                                 'image_id': image_id})
+                    LOG.info(_('Worker %(worker_id)s removed image '
+                               '%(image_id)s') %
+                             {'worker_id': self.worker.worker_id,
+                              'image_id': image_id})
         else:
             msg = ("Retention %(retention)s is found for for schedule "
                    "%(sched)s for %(instance)s" % {'retention': retention,
@@ -333,13 +347,13 @@ class SnapshotProcessor(worker.JobProcessor):
                 rax_scheduled_images_python_novaclient_ext.get(instance_id)
             ret_str = result.retention
             retention = int(ret_str or 0)
-        except exceptions.NotFound, e:
+        except exceptions.NotFound:
             msg = _('Could not retrieve retention for server %s: either the'
                     ' server was deleted or scheduled images for'
                     ' the server was disabled.') % instance_id
 
             LOG.warn(msg)
-        except Exception, e:
+        except Exception:
             msg = _('Error getting retention for server %s: ')
             LOG.exception(msg % instance_id)
 
@@ -354,10 +368,10 @@ class SnapshotProcessor(worker.JobProcessor):
             # 'image.status.upper() == "ACTIVE"' is a temporary hack to
             # incorporate rm2400. Ideally, this filtering should be performed
             # by passing an appropriate filter to the novaclient.
-            if (metadata.get("org.openstack__1__created_by")
-                == "scheduled_images_service" and
-                metadata.get("instance_uuid") == instance_id and
-                image.status.upper() == "ACTIVE"):
+            if (metadata.get("org.openstack__1__created_by") ==
+               "scheduled_images_service" and
+               metadata.get("instance_uuid") == instance_id and
+               image.status.upper() == "ACTIVE"):
                 scheduled_images.append(image)
 
         scheduled_images = sorted(scheduled_images,

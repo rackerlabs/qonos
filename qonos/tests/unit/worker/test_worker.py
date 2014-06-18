@@ -18,7 +18,6 @@ import mock
 import mox
 import time
 
-from qonos.common import exception
 from qonos.tests.unit import utils as unit_utils
 from qonos.tests.unit.worker import fakes
 from qonos.tests import utils as test_utils
@@ -51,9 +50,18 @@ class TestWorker(test_utils.BaseTestCase):
         self.processor.init_processor.assert_called_once_with(self.worker)
         self.client.create_worker.assert_called_once()
 
-    def test_worker_process_job(self):
-        self.worker.process_job(fakes.JOB['job'])
-        self.processor.process_job.assert_called_once_with(fakes.JOB['job'])
+    @mock.patch('time.time')
+    def test_worker_process_job(self, mtime_time):
+        _proc_title_time = 1403530578
+        mtime_time.return_value = _proc_title_time
+
+        job = fakes.JOB['job']
+
+        self.assertIsNone(self.worker._child_pid)
+
+        self.worker.process_job(job)
+
+        self.processor.process_job.assert_called_once_with(job)
 
     def test_worker_process_job_with_exception(self):
         job = fakes.JOB['job']
@@ -66,19 +74,85 @@ class TestWorker(test_utils.BaseTestCase):
                                                               'ERROR',
                                                               None,
                                                               mock.ANY)
-        self.processor.send_notification_job_update.assert_called_once_with(
-            {'job': job}, level='ERROR')
 
-    def test_worker_process_job_with_polling_exception(self):
+    @mock.patch('os.fork', side_effect=[0])
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_worker_should_fork_proc_on_fork_job_process_on(self,
+                                                            mos_exit,
+                                                            mos_waitpid,
+                                                            mos_fork):
+        self.config(fork_job_process=True, group='worker')
+
+        self.assertIsNone(self.worker._child_pid)
+
         job = fakes.JOB['job']
-        self.processor.process_job.side_effect = exception. \
-                                                 PollingException('Boom!')
-
         self.worker.process_job(job)
 
+        mos_fork.assert_called_once()
+        self.assertEquals(0, mos_waitpid.call_count)
+        mos_exit.assert_called_once_with(0)
+
         self.processor.process_job.assert_called_once_with(job)
-        self.assertFalse(self.client.update_job_status.called)
-        self.assertFalse(self.processor.send_notification_job_update.called)
+
+    @mock.patch('os.fork', side_effect=[1234])
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_worker_should_wait_for_child_process_to_exit(self,
+                                                          mos_exit,
+                                                          mos_waitpid,
+                                                          mos_fork):
+        self.config(fork_job_process=True, group='worker')
+
+        job = fakes.JOB['job']
+        self.worker.process_job(job)
+
+        expected_child_pid = 1234
+        mos_fork.assert_called_once()
+        mos_waitpid.assert_called_once_with(expected_child_pid, 0)
+        self.assertEquals(0, mos_exit.call_count)
+
+        self.assertEquals(expected_child_pid, self.worker._child_pid)
+        self.assertEquals(0, self.processor.process_job.call_count)
+
+    @mock.patch('time.time')
+    @mock.patch('os._exit')
+    def test_worker_child_process_main(self,
+                                       mos_exit,
+                                       mtime_time,
+                                       ):
+        _proc_title_time = 1403530578
+        mtime_time.return_value = _proc_title_time
+
+        mock.MagicMock()
+        job = fakes.JOB['job']
+
+        self.worker.child_process_main(job)
+
+        mos_exit.assert_called_once_with(0)
+
+        self.processor.process_job.assert_called_once_with(job)
+
+    @mock.patch('os.fork')
+    @mock.patch('os.waitpid')
+    @mock.patch('os._exit')
+    def test_worker_should_not_fork_proc_on_fork_job_process_off(self,
+                                                                 mos_exit,
+                                                                 mos_waitpid,
+                                                                 mos_fork):
+        self.worker.child_process_main = mock.MagicMock()
+        self.config(fork_job_process=False, group='worker')
+
+        job = fakes.JOB['job']
+        self.worker.process_job(job)
+
+        self.assertEquals(0, self.worker.child_process_main.call_count)
+        self.assertEquals(0, mos_fork.call_count)
+        self.assertEquals(0, mos_waitpid.call_count)
+        self.assertEquals(0, mos_exit.call_count)
+
+        self.assertIsNone(self.worker._child_pid)
+        self.processor.process_job.assert_called_once_with(job)
 
 
 class TestWorkerWithMox(test_utils.BaseTestCase):
@@ -101,6 +175,7 @@ class TestWorkerWithMox(test_utils.BaseTestCase):
     def prepare_client_mock(self, job=fakes.JOB_NONE, empty_jobs=0):
         self.client.create_worker(mox.IsA(str), mox.IsA(int)).\
             AndReturn(fakes.WORKER)
+
         # Argh! Mox why you no have "Times(x)" function?!?!
         for i in range(empty_jobs):
             self.client.get_next_job(str(fakes.WORKER_ID), mox.IsA(str)).\
