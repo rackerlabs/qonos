@@ -52,7 +52,12 @@ class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
         nova_client_factory = self._mock_nova_client_factory(self.job,
                                                              self.nova_client)
 
-        self.init_processor(worker, nova_client_factory=nova_client_factory)
+        self.glance_client = self._mock_glance_client(self.images)
+        glance_client_factory = self._mock_glance_client_factory(
+            self.glance_client)
+
+        self.init_processor(worker, nova_client_factory=nova_client_factory,
+                            glance_client_factory=glance_client_factory)
         self._mock_notification_calls()
 
         return self
@@ -115,6 +120,26 @@ class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
         nova_client_factory.get_nova_client = \
             mock.Mock(job, return_value=nova_client)
         return nova_client_factory
+
+    def _mock_glance_client(self, images):
+        glance_client = mock.MagicMock()
+
+        if images and len(images) == 1:
+            glance_client.get_image = mock.Mock(mock.ANY,
+                                               return_value=images[0])
+        else:
+            glance_client.get_image = mock.Mock(mock.ANY, side_effect=images)
+
+        glance_client.get_scheduled_images_by_instance = mock.Mock(
+            mock.ANY, return_value=images)
+
+        return glance_client
+
+    def _mock_glance_client_factory(self, glance_client):
+        glance_client_factory = mock.Mock()
+        glance_client_factory.get_glance_client = \
+            mock.Mock(return_value=glance_client)
+        return glance_client_factory
 
 
 class BaseTestSnapshotProcessor(utils.BaseTestCase):
@@ -296,9 +321,8 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
         job['metadata']['image_id'] = 'IMAGE_ID01'
 
         with TestableSnapshotProcessor(job, server, images) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY,
-                return_value=[self.image_fixture(
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=[self.image_fixture(
                     'IMAGE_ID01', 'ACTIVE', server.id)])
             processor.process_job(job)
 
@@ -515,12 +539,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
         img_snapshot = [self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)]
 
         with TestableSnapshotProcessor(job, server, img_snapshot) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=img_snapshot)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=img_snapshot)
 
             processor.process_job(job)
 
-            self.assertEqual(0, processor.nova_client.images.delete.call_count)
+            self.assertEqual(0,
+                             processor.glance_client.delete_images.call_count)
             self.assertFalse(processor.qonosclient.delete_schedule.called)
             self.assertEqual(img_snapshot[0].id, job['metadata']['image_id'])
             self.assertEqual('DONE', job['status'])
@@ -540,13 +565,14 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=all_instance_images)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(2, processor.nova_client.images.delete.call_count)
-            processor.nova_client.images.delete.has_calls(
+            self.assertEqual(2,
+                             processor.glance_client.delete_image.call_count)
+            processor.glance_client.delete_image.has_calls(
                 [mock.call('OLD_IMAGE_02'), mock.call('OLD_IMAGE_01')])
             self.assertFalse(processor.qonosclient.delete_schedule.called)
             self.assertEqual(current_image.id, job['metadata']['image_id'])
@@ -564,12 +590,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=all_instance_images)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(0, processor.nova_client.images.delete.call_count)
+            self.assertEqual(0,
+                             processor.glance_client.delete_image.call_count)
             self.assertEqual(current_image.id, job['metadata']['image_id'])
             self.assertEqual('DONE', job['status'])
 
@@ -589,12 +616,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=all_instance_images)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            self.assertEqual(1,
+                             processor.glance_client.delete_image.call_count)
             processor.nova_client.images.delete.has_calls(
                 [mock.call('OLD_IMAGE_01')])
             self.assertEqual('DONE', job['status'])
@@ -615,12 +643,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=all_instance_images)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            self.assertEqual(1,
+                             processor.glance_client.delete_image.call_count)
             processor.nova_client.images.delete.has_calls(
                 [mock.call('OLD_IMAGE_02')])
             self.assertEqual('DONE', job['status'])
@@ -648,12 +677,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.nova_client.images.list = mock.Mock(
-                mock.ANY, return_value=all_instance_images)
+            processor.glance_client.get_scheduled_images_by_instance = \
+                mock.Mock(mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            self.assertEqual(1,
+                             processor.glance_client.delete_image.call_count)
             processor.nova_client.images.delete.has_calls(
                 [mock.call('OLD_IMAGE_04')])
             self.assertEqual('DONE', job['status'])

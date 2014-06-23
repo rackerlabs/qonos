@@ -30,8 +30,9 @@ from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import importutils
 import qonos.openstack.common.log as logging
 import qonos.qonosclient.exception as qonos_ex
+from qonos.worker.snapshot.simple_glance_client_factory \
+    import GlanceClientFactory
 from qonos.worker import worker
-
 
 LOG = logging.getLogger(__name__)
 
@@ -72,7 +73,8 @@ class SnapshotProcessor(worker.JobProcessor):
         super(SnapshotProcessor, self).__init__()
         self.current_job = None
 
-    def init_processor(self, worker, nova_client_factory=None):
+    def init_processor(self, worker, nova_client_factory=None,
+                       glance_client_factory=None):
         super(SnapshotProcessor, self).init_processor(worker)
         self.current_job = None
         self.timeout_count = 0
@@ -86,10 +88,14 @@ class SnapshotProcessor(worker.JobProcessor):
         self.job_timeout_backoff_factor = (CONF.snapshot_worker
                                            .job_timeout_backoff_factor)
 
-        if not nova_client_factory:
+        if nova_client_factory is None:
             nova_client_factory = importutils.import_object(
                 CONF.snapshot_worker.nova_client_factory_class)
         self.nova_client_factory = nova_client_factory
+
+        if glance_client_factory is None:
+            glance_client_factory = GlanceClientFactory()
+        self.glance_client_factory = glance_client_factory
 
     def process_job(self, job):
         LOG.info(_("Worker %(worker_id)s Processing job: %(job)s") %
@@ -314,7 +320,7 @@ class SnapshotProcessor(worker.JobProcessor):
                              'retention': retention})
                 for image in to_delete:
                     image_id = image.id
-                    self._get_nova_client().images.delete(image_id)
+                    self._get_glance_client().delete_image(image_id)
                     LOG.info(_('Worker %(worker_id)s Removed image '
                                '%(image_id)s')
                               % {'worker_id': self.worker.worker_id,
@@ -347,7 +353,8 @@ class SnapshotProcessor(worker.JobProcessor):
         return retention
 
     def _find_scheduled_images_for_server(self, instance_id):
-        images = self._get_nova_client().images.list(detailed=True)
+        images = self._get_glance_client()\
+            .get_scheduled_images_by_instance(instance_id)
         scheduled_images = []
         for image in images:
             metadata = image.metadata
@@ -369,11 +376,11 @@ class SnapshotProcessor(worker.JobProcessor):
 
     def _get_image_status(self, image_id):
         """
-        Get image status with novaclient
+        Get image status with glanceclient
         """
         image_status = None
-        image = self._get_nova_client().images.get(image_id)
-
+        image = self._get_glance_client().get_image(image_id)
+        print("Image: %s" % str(image))
         if image is not None:
             image_status = image.status
 
@@ -383,6 +390,10 @@ class SnapshotProcessor(worker.JobProcessor):
         nova_client = self.nova_client_factory.get_nova_client(
             self.current_job)
         return nova_client
+
+    def _get_glance_client(self):
+        glance_client = self.glance_client_factory.get_glance_client()
+        return glance_client
 
     def _job_succeeded(self, job):
         response = self.update_job(job['id'], 'DONE')
