@@ -39,10 +39,6 @@ glance_client_factory_opts = [
                 default='http',
                 help='Default protocol to use when connecting to glance. '
                      'Set to https for SSL.'),
-    cfg.BoolOpt('glance_api_insecure',
-                default=False,
-                help='Allow to perform insecure SSL (https) requests to '
-                     'glance'),
 ]
 
 CONF = cfg.CONF
@@ -78,19 +74,22 @@ class GlanceClientFactory(object):
         glance_host = CONF.glance_client_factory.glance_host
         glance_port = CONF.glance_client_factory.glance_port
         glance_protocol = CONF.glance_client_factory.glance_protocol
-        glance_api_insecure = CONF.glance_client_factory.glance_api_insecure
 
         glance_endpoint = "%s://%s:%s" % (glance_protocol, glance_host,
                                           glance_port)
 
-        self.glance_client = glance_client.GlanceClient(
-            version=glance_version, endpoint=glance_endpoint, token=token,
-            insecure=glance_api_insecure)
+        self.glance_client = self._get_glance_client(glance_endpoint,
+                                                     glance_version,
+                                                     token)
 
         self.token = token
         self.expiration = expiration
 
         return self.glance_client
+
+    def _get_glance_client(self, glance_endpoint, glance_version, token):
+        return glance_client.GlanceClient(
+            version=glance_version, endpoint=glance_endpoint, token=token)
 
     def _get_auth_client(self):
         auth_host = CONF.glance_client_factory.auth_host

@@ -19,15 +19,18 @@ LOG = logging.getLogger(__name__)
 
 class GlanceClient(object):
 
-    def __init__(self, endpoint, token, version=1, insecure=False):
+    def __init__(self, endpoint, token, version=1):
         self.endpoint = endpoint
         self.version = version
         self.token = token
         self.client = None
-        self.insecure = insecure
+
+    # Seam for testing
+    def _create_client(self, version, endpoint, token):
+        return client.Client(version=version, endpoint=endpoint, token=token)
 
     def _get_client(self):
-        return client.Client(self.version, self.endpoint, token=self.token)
+        return self._create_client(self.version, self.endpoint, self.token)
 
     def get_image(self, image_id):
         return self._get_client().images.get(image_id)
