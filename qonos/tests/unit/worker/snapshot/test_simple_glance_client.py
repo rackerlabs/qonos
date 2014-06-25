@@ -19,16 +19,16 @@ from qonos.tests import utils as test_utils
 from qonos.worker.snapshot import simple_glance_client
 
 
-class TestSnapshotProcessor(test_utils.BaseTestCase):
+class TestSimpleGlanceClient(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestSnapshotProcessor, self).setUp()
+        super(TestSimpleGlanceClient, self).setUp()
         self.mox = mox.Mox()
         self.glance_client = self.mox.CreateMockAnything()
         self.images = self.mox.CreateMockAnything()
         self.glance_client.images = self.images
 
     def tearDown(self):
-        super(TestSnapshotProcessor, self).tearDown()
+        super(TestSimpleGlanceClient, self).tearDown()
         self.glance_client = None
 
     def test_get_client_default_version(self):
@@ -44,7 +44,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
             return self.glance_client
 
         self.stubs.Set(client, '_create_client', fake_create_client)
-        client._create_client(exp_version, exp_endpoint, exp_token)
+        client._get_client()
 
     def test_get_client_given_version(self):
         exp_version = 2
@@ -60,7 +60,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
             return self.glance_client
 
         self.stubs.Set(client, '_create_client', fake_create_client)
-        client._create_client(exp_version, exp_endpoint, exp_token)
+        client._get_client()
 
     def _create_expected_si_filter(self, instance_id):
         return {
@@ -120,6 +120,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         si_filter = self._create_expected_si_filter(exp_instance_id)
         filters = {
+            "status": "ACTIVE",
             "properties": si_filter
         }
 
@@ -144,7 +145,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                                    version=exp_version)
 
         filters = self._create_expected_si_filter(exp_instance_id)
-
+        filters['status'] = 'ACTIVE'
         self.images.list(filters=filters)
         self.mox.ReplayAll()
 

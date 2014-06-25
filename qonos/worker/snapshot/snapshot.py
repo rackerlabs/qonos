@@ -30,8 +30,7 @@ from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import importutils
 import qonos.openstack.common.log as logging
 import qonos.qonosclient.exception as qonos_ex
-from qonos.worker.snapshot.simple_glance_client_factory \
-    import GlanceClientFactory
+
 from qonos.worker import worker
 
 LOG = logging.getLogger(__name__)
@@ -40,6 +39,9 @@ snapshot_worker_opts = [
     cfg.StrOpt('nova_client_factory_class',
                default='qonos.worker.snapshot.simple_nova_client_factory.'
                        'NovaClientFactory'),
+    cfg.StrOpt('glance_client_factory_class',
+               default='qonos.worker.snapshot.simple_glance_client_factory.'
+                       'GlanceClientFactory'),
     cfg.IntOpt('image_poll_interval_sec', default=30,
                help=_('How often to poll Nova for the image status')),
     cfg.IntOpt('job_update_interval_sec', default=300,
@@ -94,7 +96,8 @@ class SnapshotProcessor(worker.JobProcessor):
         self.nova_client_factory = nova_client_factory
 
         if glance_client_factory is None:
-            glance_client_factory = GlanceClientFactory()
+            glance_client_factory = importutils.import_object(
+                CONF.snapshot_worker.glance_client_factory_class)
         self.glance_client_factory = glance_client_factory
 
     def process_job(self, job):
@@ -355,20 +358,8 @@ class SnapshotProcessor(worker.JobProcessor):
     def _find_scheduled_images_for_server(self, instance_id):
         images = self._get_glance_client()\
             .get_scheduled_images_by_instance(instance_id)
-        scheduled_images = []
-        for image in images:
-            metadata = image.metadata
-            # Note(Hemanth): In the following condition,
-            # 'image.status.upper() == "ACTIVE"' is a temporary hack to
-            # incorporate rm2400. Ideally, this filtering should be performed
-            # by passing an appropriate filter to the novaclient.
-            if (metadata.get("org.openstack__1__created_by")
-                == "scheduled_images_service" and
-                metadata.get("instance_uuid") == instance_id and
-                image.status.upper() == "ACTIVE"):
-                scheduled_images.append(image)
 
-        scheduled_images = sorted(scheduled_images,
+        scheduled_images = sorted(images,
                                   key=attrgetter('created'),
                                   reverse=True)
 
@@ -380,7 +371,6 @@ class SnapshotProcessor(worker.JobProcessor):
         """
         image_status = None
         image = self._get_glance_client().get_image(image_id)
-        print("Image: %s" % str(image))
         if image is not None:
             image_status = image.status
 

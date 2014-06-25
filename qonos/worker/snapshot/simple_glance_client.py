@@ -41,21 +41,26 @@ class GlanceClient(object):
             "instance_uuid": instance_id
         }
 
-    def _get_v1_images(self, instance_id):
-        filters = {
+    def _get_v1_images(self, instance_id, filters):
+        v1_filters = {
+            "status": "ACTIVE",
             "properties": self._get_si_filter(instance_id)
         }
-        return self._get_client().images.list(filters=filters)
+        return self._get_client().images.list(filters=v1_filters)
 
-    def _get_v2_images(self, instance_id):
-        filters = self._get_si_filter(instance_id)
-        return self._get_client().images.list(filters=filters)
+    def _get_v2_images(self, instance_id, filters):
+        v2_filters = self._get_si_filter(instance_id)
+        v2_filters['status'] = "ACTIVE"
+        return self._get_client().images.list(filters=v2_filters)
 
-    def get_scheduled_images_by_instance(self, instance_id):
+    def get_scheduled_images_by_instance(self, instance_id, filters=None):
+        if filters is None:
+            filters = self._get_si_filter(instance_id)
+
         if self.version == 1:
-            return self._get_v1_images(instance_id)
+            return self._get_v1_images(instance_id, filters)
         else:
-            return self._get_v2_images(instance_id)
+            return self._get_v2_images(instance_id, filters)
 
     def delete_image(self, image_id):
         self._get_client().images.delete(image_id)

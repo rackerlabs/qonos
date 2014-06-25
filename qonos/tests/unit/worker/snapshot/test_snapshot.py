@@ -851,46 +851,6 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         self.mox.VerifyAll()
 
-    def test_doesnt_delete_images_from_another_instance(self):
-        timeutils.set_time_override()
-        instance_id = self.job['metadata']['instance_id']
-        self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
-            MockImageStatus('ACTIVE'))
-        mock_retention = MockRetention(3)
-        self.nova_client.rax_scheduled_images_python_novaclient_ext.\
-            get(mox.IsA(str)).AndReturn(mock_retention)
-        mock_server = MockServer(instance_id=instance_id)
-        image_list = self._create_images_list(mock_server.id, 5)
-        to_delete = image_list[3:]
-        image_list.extend(self._create_images_list(
-                uuidutils.generate_uuid(), 3))
-        self.glance_client.get_scheduled_images_by_instance(fakes.INSTANCE_ID)\
-            .AndReturn(image_list)
-        # The image list happens to be in descending created order
-        self.glance_client.delete_image(to_delete[0].id)
-        self.glance_client.delete_image(to_delete[1].id)
-        self._simple_prepare_worker_mock()
-        self.mox.StubOutWithMock(utils, 'generate_notification')
-        utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
-                                    mox.IsA(str))
-        utils.generate_notification(None, 'qonos.job.update', mox.IsA(dict),
-                                    mox.IsA(str)).MultipleTimes()
-        self.worker.update_job(fakes.JOB_ID, 'DONE', timeout=None,
-                               error_message=None)
-        utils.generate_notification(None, 'qonos.job.run.end', mox.IsA(dict),
-                                    mox.IsA(str))
-        self.mox.ReplayAll()
-
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                               self.glance_client)
-        processor.init_processor(self.worker)
-        processor.process_job(self.job)
-
-        self.mox.VerifyAll()
-
     def test_generate_image_name_daily(self):
         schedule = {}
         timeutils.set_time_override(datetime.datetime(2013, 3, 22, 22, 39, 27))
