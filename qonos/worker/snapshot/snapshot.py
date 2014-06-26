@@ -372,7 +372,7 @@ class SnapshotProcessor(worker.JobProcessor):
         image_status = None
         image = self._get_glance_client().get_image(image_id)
         if image is not None:
-            image_status = image.status
+            image_status = image.status.upper()
 
         return image_status
 

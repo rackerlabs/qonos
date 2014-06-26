@@ -23,7 +23,8 @@ LOG = logging.getLogger(__name__)
 
 
 glance_client_factory_opts = [
-    cfg.StrOpt('auth_host', default="http://127.0.0.1"),
+    cfg.StrOpt('auth_protocol', default='https'),
+    cfg.StrOpt('auth_host', default="127.0.0.1"),
     cfg.IntOpt('auth_port', default=5000),
     cfg.StrOpt('auth_version', default='v2.0'),
     cfg.StrOpt('glance_admin_user', default='admin_user'),
@@ -92,7 +93,9 @@ class GlanceClientFactory(object):
             version=glance_version, endpoint=glance_endpoint, token=token)
 
     def _get_auth_client(self):
+        auth_protocol = CONF.glance_client_factory.auth_protocol
         auth_host = CONF.glance_client_factory.auth_host
         auth_port = CONF.glance_client_factory.auth_port
         auth_version = CONF.glance_client_factory.auth_version
-        return auth_client.AuthClient(auth_host, auth_port, auth_version)
+        return auth_client.AuthClient(auth_protocol, auth_host, auth_port,
+                                      auth_version)

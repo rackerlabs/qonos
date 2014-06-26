@@ -27,13 +27,23 @@ LOG = logging.getLogger(__name__)
 
 class HttpClient(object):
 
-    def __init__(self, host, port, version):
+    def __init__(self, protocol, host, port, version):
+        if protocol is None or (protocol.lower() not in ['http', 'https']):
+            raise HttpClientException(message='Invalid protocol: %s' %
+                                              str(protocol))
+        self.protocol = protocol
         self.host = host
         self.port = port
         self.version = version
 
+    def _get_connection(self):
+        if self.protocol.lower() == 'https':
+            return httplib.HTTPSConnection(self.host, self.port)
+        elif self.protocol.lower() == 'http':
+            return httplib.HTTPConnection(self.host, self.port)
+
     def _do_request(self, method, url, auth_token=None, body=None):
-        conn = httplib.HTTPSConnection(self.host, self.port)
+        conn = self._get_connection()
         url = "/%s%s" % (self.version, url)
         headers = {
                    'Content-Type': 'application/json',

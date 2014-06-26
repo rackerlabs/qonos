@@ -21,16 +21,19 @@ LOG = logging.getLogger(__name__)
 
 class AuthClient(http_client.HttpClient):
 
-    def __init__(self, host, port, version):
-        super(AuthClient, self).__init__(host, port, version)
+    def __init__(self, protocol, host, port, version):
+        super(AuthClient, self).__init__(protocol, host, port, version)
 
     def get_token(self, username, password):
-        body = {"auth": {
-                         "passwordCredentials": {"username": username,
-                                                 "password": password
-                                                }
-                        }
-               }
+        body = {
+            "auth": {
+                "tenantName": username,
+                "passwordCredentials": {
+                    "username": username,
+                    "password": password
+                }
+            }
+        }
         try:
             response = self._do_request('POST', '/tokens', body=body)
         except http_client.HttpClientException as e:
