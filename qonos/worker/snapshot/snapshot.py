@@ -44,13 +44,18 @@ snapshot_worker_opts = [
                help=_('How often to poll Nova for the image status')),
     cfg.IntOpt('job_update_interval_sec', default=300,
                help=_('How often to update the job status, in seconds')),
-    cfg.IntOpt('job_timeout_update_interval_min', default=60,
-               help=_('How often to update the job timeout, in minutes')),
-    cfg.IntOpt('job_timeout_update_increment_min', default=60,
-               help=_('How much to increment the timeout, in minutes')),
+    cfg.IntOpt('job_timeout_initial_value_sec', default=3600,
+               help=_('Initial timeout value, in seconds')),
+    cfg.IntOpt('job_timeout_extension_sec', default=3600,
+               help=_('When nearing timeout, extend it by, in seconds')),
+    cfg.IntOpt('job_timeout_extension_threshold_sec', default=300,
+               help=_('Extend if timeout is less than threshold, in seconds')),
     cfg.IntOpt('job_timeout_max_updates', default=3,
                help=_('How many times to update the timeout before '
                       'considering the job to be failed')),
+    cfg.IntOpt('job_timeout_backoff_increment_sec', default=3600,
+               help=_('Timeout increment to use when an error occurs, in '
+                      'seconds')),
     cfg.IntOpt('job_timeout_backoff_factor', default=1,
                help=_('Timeout multiplier to use when an error occurs')),
 ]
@@ -79,13 +84,19 @@ class SnapshotProcessor(worker.JobProcessor):
         self.timeout_count = 0
         self.timeout_max_updates = CONF.snapshot_worker.job_timeout_max_updates
         self.next_timeout = None
+        self.timeout_extension = datetime.timedelta(
+            seconds=CONF.snapshot_worker.job_timeout_extension_sec)
+        self.extension_threshold = datetime.timedelta(
+            seconds=CONF.snapshot_worker.job_timeout_extension_threshold_sec)
         self.update_interval = datetime.timedelta(
             seconds=CONF.snapshot_worker.job_update_interval_sec)
-        self.timeout_increment = datetime.timedelta(
-            minutes=CONF.snapshot_worker.job_timeout_update_increment_min)
+        self.initial_timeout = datetime.timedelta(
+            seconds=CONF.snapshot_worker.job_timeout_initial_value_sec)
         self.image_poll_interval = CONF.snapshot_worker.image_poll_interval_sec
-        self.job_timeout_backoff_factor = (CONF.snapshot_worker
-                                           .job_timeout_backoff_factor)
+        self.timeout_backoff_increment = datetime.timedelta(
+            seconds=CONF.snapshot_worker.job_timeout_backoff_increment_sec)
+        self.timeout_backoff_factor = (CONF.snapshot_worker
+                                       .job_timeout_backoff_factor)
 
         if not nova_client_factory:
             nova_client_factory = importutils.import_object(
@@ -122,7 +133,7 @@ class SnapshotProcessor(worker.JobProcessor):
         self.current_job = job
 
         now = self._get_utcnow()
-        self.next_timeout = now + self.timeout_increment
+        self.next_timeout = now + self.initial_timeout
         self._job_processing(job, self.next_timeout)
         self.next_update = self._get_utcnow() + self.update_interval
 
@@ -152,7 +163,11 @@ class SnapshotProcessor(worker.JobProcessor):
 
             active = image_status == 'ACTIVE'
             if not active:
-                retry = self._try_update(job_id, "PROCESSING")
+                retry = True
+                try:
+                    self._update_job(job_id, "PROCESSING")
+                except exc.OutOfTimeException:
+                    retry = False
                 time.sleep(self.image_poll_interval)
 
         if active:
@@ -405,7 +420,7 @@ class SnapshotProcessor(worker.JobProcessor):
         self.send_notification_job_update({'job': job})
 
     def _job_error_occurred(self, job, error_message=None):
-        timeout = self._get_updated_job_timeout(job['id'])
+        timeout = self._get_updated_job_timeout()
         response = self.update_job(job['id'], 'ERROR', timeout=timeout,
                                    error_message=error_message)
         if response:
@@ -414,10 +429,10 @@ class SnapshotProcessor(worker.JobProcessor):
         job_payload['error_message'] = error_message or ''
         self.send_notification_job_update({'job': job_payload}, level='ERROR')
 
-    def _get_updated_job_timeout(self, job_id):
-        backoff_factor = (self.job_timeout_backoff_factor
+    def _get_updated_job_timeout(self):
+        backoff_factor = (self.timeout_backoff_factor
                           ** int(self.current_job['retry_count']))
-        timeout_increment = self.timeout_increment * backoff_factor
+        timeout_increment = self.timeout_backoff_increment * backoff_factor
 
         now = self._get_utcnow()
         timeout = now + timeout_increment
@@ -434,25 +449,31 @@ class SnapshotProcessor(worker.JobProcessor):
         job['status'] = resp.get('status')
         job['timeout'] = resp.get('timeout')
 
-    def _try_update(self, job_id, status):
+    def _update_job(self, job_id, status):
         now = self._get_utcnow()
-        # Time for a timeout update?
-        if now >= self.next_timeout:
-            # Out of timeouts?
-            if self.timeout_count >= self.timeout_max_updates:
-                return False
+        time_remaining = self.next_timeout - now
 
-            self.next_timeout = self.next_timeout + self.timeout_increment
+        # Getting close to timeout; extend if possible
+        if(time_remaining < self.extension_threshold and
+           self.timeout_count < self.timeout_max_updates):
+            if self.next_timeout > now:
+                self.next_timeout += self.timeout_extension
+            else:
+                self.next_timeout = now + self.timeout_extension
             self.timeout_count += 1
+            # Still working; don't reclaim my job; timeout was extended
             self.update_job(job_id, status, self.next_timeout)
-            return True
+            return
+
+        # Out of time
+        if now >= self.next_timeout:
+            kwargs = {'job': job_id, 'status': status}
+            raise exc.OutOfTimeException(**kwargs)
 
         # Time for a status-only update?
         if now >= self.next_update:
             self.next_update = now + self.update_interval
             self.update_job(job_id, status)
-
-        return True
 
     def _get_instance_id(self, job):
         metadata = job['metadata']
