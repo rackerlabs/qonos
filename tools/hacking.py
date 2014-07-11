@@ -142,7 +142,7 @@ def hacking_except_format_assert(logical_line):
     HACKING guide recommends not using assertRaises(Exception...):
     Do not use overly broad Exception type
 
-    Okay: self.assertRaises(NovaException)
+    Okay: self.assertRaises(QonosException)
     H202: self.assertRaises(Exception)
     """
     if logical_line.startswith("self.assertRaises(Exception"):
@@ -156,8 +156,8 @@ def hacking_one_import_per_line(logical_line):
     Do not import more than one module per line
 
     Examples:
-    Okay: from nova.rpc.common import RemoteError
-    H301: from nova.rpc.common import RemoteError, LOG
+    Okay: from qonos.common import exception
+    H301: from qonos.common import exception, timeutils
     """
     pos = logical_line.find(',')
     parts = logical_line.split()
@@ -266,7 +266,7 @@ def hacking_import_alphabetical(logical_line, blank_lines, previous_logical,
     HACKING guide recommendation for imports:
     imports in human alphabetical order
 
-    Okay: import os\nimport sys\n\nimport nova\nfrom nova import test
+    Okay: import os\nimport sys\n\nimport qonos\nfrom qonos import tests
     H306: import sys\nimport os
     """
     # handle import x
@@ -548,10 +548,10 @@ imports_on_separate_lines_H301_compliant = r"""
     E401: import sys, os
 
     H301: from subprocess import Popen, PIPE
-    Okay: from myclas import MyClass
-    Okay: from foo.bar.yourclass import YourClass
-    Okay: import myclass
-    Okay: import foo.bar.yourclass
+    Okay: from qonos import api
+    Okay: from qonos.common import exception
+    Okay: import qonos
+    Okay: import qonos.db.migration
     """
 
 if __name__ == "__main__":
