@@ -18,47 +18,45 @@ from qonos.openstack.common.gettextutils import _
 
 
 class QonosException(Exception):
-    message = 'An unknown exception occurred'
+    message = _('An unknown exception occurred')
 
     def __init__(self, message=None, *args, **kwargs):
-        if not message:
-            message = self.message
         try:
             message = message % kwargs
         except Exception:
             # at least get the core message out if something happened
-            pass
-        super(QonosException, self).__init__(_(message))
+            message = self.message
+        super(QonosException, self).__init__(message)
 
 
 class NotFound(QonosException):
-    message = 'An object with the specified identifier could not be found.'
+    message = _('An object with the specified identifier could not be found.')
 
 
 class Forbidden(QonosException):
-    message = 'The action performed is forbidden for given object.'
+    message = _('The action performed is forbidden for given object.')
 
 
 class Duplicate(QonosException):
-    message = 'An object with the specified identifier already exists.'
+    message = _('An object with the specified identifier already exists.')
 
 
 class MissingValue(QonosException):
-    message = 'A required value was not provided'
+    message = _('A required value was not provided')
 
 
 class Invalid(QonosException):
-    message = 'The input provided was invalid.'
+    message = _('The input provided was invalid.')
 
 
 class PollingException(QonosException):
-    message = 'An error occured when polling.'
+    message = _('An error occured when polling.')
 
 
 class OutOfTimeException(QonosException):
-    message = ('Timeout occurred while trying to process job %(job)s in '
-               'status %(status)s')
+    message = _('Timeout occurred while trying to process job %(job)s in '
+                'status %(status)s')
 
 
 class DatabaseMigrationError(QonosException):
-    message = "There was an error migrating the database."
+    message = _("There was an error migrating the database.")
