@@ -20,7 +20,6 @@ import mox
 
 from novaclient import exceptions
 
-from qonos.common import exception
 from qonos.common import timeutils
 from qonos.common import utils
 from qonos.openstack.common import uuidutils
@@ -656,9 +655,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
-        self.assertRaises(exception.PollingException,
-                          processor.process_job,
-                          job)
+        processor.process_job(job)
 
         self.mox.VerifyAll()
 

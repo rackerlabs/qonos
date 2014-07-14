@@ -17,11 +17,11 @@
 import copy
 import datetime
 import mock
+import traceback as tb
 
 from novaclient import exceptions
 from oslo.config import cfg
 
-from qonos.common import exception
 from qonos.common import timeutils
 from qonos.common import utils as common_utils
 import qonos.qonosclient.exception as qonos_ex
@@ -180,6 +180,14 @@ class BaseTestSnapshotProcessor(utils.BaseTestCase):
                                    processor.update_job_calls))
         self.assertEqual(expected_job_statuses, actual_job_statuses)
 
+    def assert_job_status_values(self, processor, expected_status_values={}):
+        expected_job_status = expected_status_values['status']
+        self.assertEqual(expected_job_status, processor.job['status'])
+
+        job_status_update_values = processor.update_job_calls[-1]
+        for k, v in expected_status_values.iteritems():
+            self.assertEqual(v, job_status_update_values[k])
+
     def assert_error_job_update_with_timeout(self, processor):
         error_job_update = processor.update_job_calls[-1]
         self.assertIsNotNone(error_job_update['timeout'])
@@ -276,15 +284,21 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
             exc = exceptions.NotFound('Instance not found!!')
             processor.nova_client.images.get = mock.Mock(mock.ANY,
                                                          side_effect=exc)
-            with self.assertRaises(exception.PollingException) as cm:
-                processor.process_job(job)
+            processor.process_job(job)
 
+            org_err_msg = tb.format_exception_only(type(exc), exc)
+            err_val = {"job_id": job['id'],
+                       "image_id": job['metadata']['image_id'],
+                       "org_err_msg": org_err_msg}
             expected_err_msg = ("ERROR get_image_id():"
-                                " job_id: %s, image_id: %s" %
-                                (job['id'], job['metadata']['image_id']))
-            self.assertTrue(str(cm.exception).startswith(expected_err_msg))
+                                " job_id: %(job_id)s, image_id: %(image_id)s"
+                                " err:%(org_err_msg)s") % err_val
+
             self.assert_update_job_statuses(processor, ['PROCESSING', 'ERROR'])
-            self.assert_error_job_update_with_timeout(processor)
+            self.assert_job_status_values(processor, {
+                'status': 'ERROR',
+                'error_message': expected_err_msg
+            })
 
     def test_process_job_shouldnt_create_img_if_curr_img_status_is_none(self):
         server = self.server_instance_fixture('INSTANCE_ID', "test")
@@ -384,11 +398,26 @@ class TestSnapshotProcessorPolling(BaseTestSnapshotProcessor):
         server = self.server_instance_fixture("INSTANCE_ID", "test")
         for error_status in snapshot._FAILED_IMAGE_STATUSES:
             job = self.job_fixture(server.id)
-            images = [self.image_fixture('IMAGE_ID', error_status, server.id)]
+            failed_image = self.image_fixture('IMAGE_ID',
+                                              error_status, server.id)
+            images = [failed_image]
 
             with TestableSnapshotProcessor(job, server, images) as processor:
-                self.assertRaises(exception.PollingException,
-                                  processor.process_job, job)
+                processor.process_job(job)
+
+                self.assertEqual('ERROR', job['status'])
+                err_val = {'image_id': failed_image.id,
+                           "image_status": failed_image.status,
+                           "job_id": job['id']}
+                expected_err_msg = (
+                    "PollingErr: Got failed image status. Details:"
+                    " image_id: %(image_id)s, 'image_status': %(image_status)s"
+                    " job_id: %(job_id)s") % err_val
+
+                self.assert_job_status_values(processor, {
+                    'status': 'ERROR',
+                    'error_message': expected_err_msg
+                })
 
                 self.assertEqual(0, processor.timeout_count)
                 self.assert_update_job_statuses(processor,
@@ -406,8 +435,21 @@ class TestSnapshotProcessorPolling(BaseTestSnapshotProcessor):
         ]
 
         with TestableSnapshotProcessor(job, server, images) as processor:
-            self.assertRaises(exception.PollingException,
-                              processor.process_job, job)
+            processor.process_job(job)
+
+            self.assertEqual('ERROR', job['status'])
+            err_val = {'image_id': job['metadata']['image_id'],
+                       "image_status": None,
+                       "job_id": job['id']}
+            expected_err_msg = (
+                "PollingErr: Got failed image status. Details:"
+                " image_id: %(image_id)s, 'image_status': %(image_status)s"
+                " job_id: %(job_id)s") % err_val
+
+            self.assert_job_status_values(processor, {
+                'status': 'ERROR',
+                'error_message': expected_err_msg
+            })
 
             self.assertEqual(0, processor.timeout_count)
             self.assert_update_job_statuses(processor,
@@ -418,14 +460,28 @@ class TestSnapshotProcessorPolling(BaseTestSnapshotProcessor):
         server = self.server_instance_fixture("INSTANCE_ID", "test")
         for error_status in snapshot._FAILED_IMAGE_STATUSES:
             job = self.job_fixture(server.id)
-            images = [self.image_fixture('IMAGE_ID', 'SAVING', server.id),
-                      self.image_fixture('IMAGE_ID', error_status, server.id)]
+            image_id = 'IMAGE_ID'
+            images = [self.image_fixture(image_id, 'SAVING', server.id),
+                      self.image_fixture(image_id, error_status, server.id)]
 
             with TestableSnapshotProcessor(job, server, images) as processor:
-                self.assertRaises(exception.PollingException,
-                                  processor.process_job, job)
+                processor.process_job(job)
 
                 self.assertEqual(0, processor.timeout_count)
+
+                err_val = {'image_id': image_id,
+                           "image_status": error_status,
+                           "job_id": job['id']}
+                expected_err_msg = (
+                    "PollingErr: Got failed image status. Details:"
+                    " image_id: %(image_id)s, 'image_status': %(image_status)s"
+                    " job_id: %(job_id)s") % err_val
+
+                self.assert_job_status_values(processor, {
+                    'status': 'ERROR',
+                    'error_message': expected_err_msg
+                })
+
                 self.assert_update_job_statuses(processor,
                                                 ['PROCESSING', 'ERROR'])
                 self.assert_error_job_update_with_timeout(processor)
@@ -836,13 +892,25 @@ class TestSnapshotProcessorNotifications(BaseTestSnapshotProcessor):
     def test_notifications_for_errored_job_on_failed_image_status(self):
         server = self.server_instance_fixture("INSTANCE_ID", "test")
         job = self.job_fixture(server.id)
-        images = [self.image_fixture('IMAGE_ID', 'KILLED', server.id)]
+        failed_image = self.image_fixture('IMAGE_ID', 'KILLED', server.id)
+        images = [failed_image]
 
         with TestableSnapshotProcessor(job, server, images) as processor:
-            self.assertRaises(exception.PollingException,
-                              processor.process_job, job)
+            processor.process_job(job)
 
             self.assertEqual('ERROR', job['status'])
+            err_val = {'image_id': failed_image.id,
+                       "image_status": failed_image.status,
+                       "job_id": job['id']}
+            expected_err_msg = (
+                "PollingErr: Got failed image status. Details:"
+                " image_id: %(image_id)s, 'image_status': %(image_status)s"
+                " job_id: %(job_id)s") % err_val
+
+            self.assert_job_status_values(processor, {
+                'status': 'ERROR',
+                'error_message': expected_err_msg
+            })
             expected_notifications = [
                 ('qonos.job.run.start', 'INFO', 'QUEUED'),
                 ('qonos.job.update', 'INFO', 'PROCESSING'),
