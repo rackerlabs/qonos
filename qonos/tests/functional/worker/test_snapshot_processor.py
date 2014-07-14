@@ -22,6 +22,7 @@ import traceback as tb
 from novaclient import exceptions
 from oslo.config import cfg
 
+from qonos.common import exception
 from qonos.common import timeutils
 from qonos.common import utils as common_utils
 import qonos.qonosclient.exception as qonos_ex
