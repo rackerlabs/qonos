@@ -37,7 +37,6 @@ api_opts = [
 ]
 
 action_opts = [
-    cfg.IntOpt('max_retry', default=1),
     cfg.IntOpt('timeout_seconds', default=60),
 ]
 
@@ -74,8 +73,6 @@ class API(object):
         for action in CONF.api.action_overrides:
             group = 'action_' + action
             action_opts = [
-                cfg.IntOpt('max_retry',
-                           default=CONF.action_default.max_retry),
                 cfg.IntOpt('timeout_seconds',
                            default=CONF.action_default.timeout_seconds),
                 ]

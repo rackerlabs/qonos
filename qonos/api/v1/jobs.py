@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import copy
 import webob.exc
 
 from qonos.api import api
@@ -172,10 +171,10 @@ class JobsController(object):
             msg = _('Job %s could not be found.') % job_id
             raise webob.exc.HTTPNotFound(explanation=msg)
 
-        if status['status'].upper() in ['ERROR', 'CANCELLED']:
+        err_statuses = ['ERROR', 'CANCELLED', 'HARD_TIMED_OUT', 'MAX_RETRIED']
+        if status['status'].upper() in err_statuses:
             values = self._get_error_values(status, job)
             self.db_api.job_fault_create(values)
-            self.notify_job_failure_if_no_retry(job, values['message'])
 
         return {'status': {'status': job['status'],
                            'timeout': job['timeout']}}
@@ -203,24 +202,6 @@ class JobsController(object):
         if group not in CONF:
             group = 'action_default'
         return CONF.get(group).timeout_seconds
-
-    def notify_job_failure_if_no_retry(self, job_payload, error_message):
-        #NOTE(venkatesh): sending of qonos.job.failed notification should be
-        # the responsibility of the worker processing the job and hence this
-        # should eventually be moved to the qonos worker.
-        job = copy.deepcopy(job_payload)
-        max_retry = api_utils.job_get_max_retry(job['action'])
-        now = timeutils.utcnow()
-        if job['status'] == 'ERROR':
-            if (job['retry_count'] >= max_retry
-                    or job['hard_timeout'] <= now):
-                utils.serialize_datetimes(job)
-                job['error_message'] = error_message or ''
-                job = {'job': job}
-                utils.generate_notification(None,
-                                            'qonos.job.failed',
-                                            job,
-                                            'ERROR')
 
 
 def create_resource():

@@ -654,14 +654,13 @@ def job_updated_at_get_by_id(job_id):
 
 
 @force_dict
-def job_get_and_assign_next_by_action(action, worker_id, max_retry,
-                                      new_timeout):
+def job_get_and_assign_next_by_action(action, worker_id, new_timeout):
     """Get the next available job for the given action and assign it
     to the worker for worker_id."""
     now = timeutils.utcnow()
     session = get_session()
 
-    job_ref = _job_get_next_by_action(session, now, action, max_retry)
+    job_ref = _job_get_next_by_action(session, now, action)
 
     if not job_ref:
         return None
@@ -699,13 +698,12 @@ def job_get_and_assign_next_by_action(action, worker_id, max_retry,
     return _job_get_by_id(job_id)
 
 
-def _job_get_next_by_action(session, now, action, max_retry):
+def _job_get_next_by_action(session, now, action):
+    statuses = ['DONE', 'CANCELLED', 'HARD_TIMED_OUT', 'MAX_RETRIED']
     job_ref = session.query(models.Job)\
         .options(sa_orm.subqueryload('job_metadata'))\
         .filter_by(action=action)\
-        .filter(models.Job.retry_count < max_retry)\
-        .filter(models.Job.hard_timeout > now)\
-        .filter(sa_sql.or_(~models.Job.status.in_(['DONE', 'CANCELLED']),
+        .filter(sa_sql.or_(~models.Job.status.in_(statuses),
                            models.Job.status == None))\
         .filter(sa_sql.or_(models.Job.worker_id == None,
                            models.Job.timeout <= now))\
