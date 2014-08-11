@@ -162,8 +162,8 @@ class BaseTestSnapshotProcessor(utils.BaseTestCase):
 
     def job_fixture(self, instance_id, **kwargs):
         now = timeutils.utcnow()
-        timeout = now + datetime.timedelta(hours=1)
-        hard_timeout = now + datetime.timedelta(hours=4)
+        timeout = timeutils.strtime(now + datetime.timedelta(hours=1))
+        hard_timeout = timeutils.strtime(now + datetime.timedelta(hours=4))
 
         fixture = {
             'id': 'JOB_1',
@@ -371,7 +371,9 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
 
         now = timeutils.utcnow()
         expired_hard_timeout = now - datetime.timedelta(hours=4)
-        job = self.job_fixture(server.id, hard_timeout=expired_hard_timeout)
+        job = self.job_fixture(server.id,
+                               hard_timeout=timeutils.strtime(
+                                   expired_hard_timeout))
 
         with TestableSnapshotProcessor(job, server, []) as processor:
             processor.process_job(job)
@@ -832,7 +834,9 @@ class TestSnapshotProcessorNotifications(BaseTestSnapshotProcessor):
         server = self.server_instance_fixture("INSTANCE_ID", "test")
         now = timeutils.utcnow()
         expired_hard_timeout = now - datetime.timedelta(hours=4)
-        job = self.job_fixture(server.id, hard_timeout=expired_hard_timeout)
+        job = self.job_fixture(server.id,
+                               hard_timeout=timeutils.strtime(
+                                   expired_hard_timeout))
 
         with TestableSnapshotProcessor(job, server, []) as processor:
             processor.process_job(job)

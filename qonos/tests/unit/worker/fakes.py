@@ -26,9 +26,10 @@ SCHEDULE_ID = '33333333-3333-3333-3333-33333333'
 TENANT = '44444444-4444-4444-4444-44444444'
 INSTANCE_ID = '55555555-5555-5555-5555-55555555'
 
-BASE_TIME = timeutils.utcnow()
-TIMEOUT = BASE_TIME + datetime.timedelta(hours=1)
-HARD_TIMEOUT = BASE_TIME + datetime.timedelta(hours=2)
+BASE_TIME_T = timeutils.utcnow()
+BASE_TIME = timeutils.strtime(at=BASE_TIME_T)
+TIMEOUT = timeutils.strtime(BASE_TIME_T + datetime.timedelta(hours=1))
+HARD_TIMEOUT = timeutils.strtime(BASE_TIME_T + datetime.timedelta(hours=2))
 
 JOB = {
     'job': {
