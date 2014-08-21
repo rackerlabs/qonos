@@ -60,6 +60,9 @@ snapshot_worker_opts = [
                       'seconds')),
     cfg.IntOpt('job_timeout_backoff_factor', default=1,
                help=_('Timeout multiplier to use when an error occurs')),
+    cfg.IntOpt('job_timeout_worker_stop_sec', default=300,
+               help=_('How far in the future to timeout the job when the '
+                      'worker shuts down, in seconds')),
     cfg.IntOpt('max_retry', default=5,
                help=_('Maximum number of tries that a job can be processed')),
 ]
@@ -68,10 +71,6 @@ CONF = cfg.CONF
 CONF.register_opts(snapshot_worker_opts, group='snapshot_worker')
 
 _FAILED_IMAGE_STATUSES = ['KILLED', 'DELETED', 'PENDING_DELETE', 'ERROR']
-
-# How far in the future to timeout the job when the worker shuts down so
-# it will get picked up again fairly quickly
-_WORKER_STOP_TIMEOUT_SEC = 300
 
 DAILY = 'Daily'
 WEEKLY = 'Weekly'
@@ -103,6 +102,8 @@ class SnapshotProcessor(worker.JobProcessor):
             seconds=CONF.snapshot_worker.job_timeout_backoff_increment_sec)
         self.timeout_backoff_factor = (CONF.snapshot_worker
                                        .job_timeout_backoff_factor)
+        self.timeout_worker_stop = datetime.timedelta(
+            CONF.snapshot_worker.job_timeout_worker_stop_sec)
 
         if nova_client_factory is None:
             nova_client_factory = importutils.import_object(
@@ -230,7 +231,7 @@ class SnapshotProcessor(worker.JobProcessor):
             # queuing up behind a bunch of new jobs, but not so soon that
             # another worker will pick it up before everything is shut down
             # and thus burn through the retries
-            timeout = self._get_utcnow() + _WORKER_STOP_TIMEOUT_SEC
+            timeout = self._get_utcnow() + self.timeout_worker_stop
             self._job_processing(job_id, timeout=timeout)
 
         LOG.debug("Snapshot complete")
