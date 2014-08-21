@@ -35,6 +35,10 @@ job_timeout_update_increment_min = 60
 # How many times to update the timeout before considering the job to be failed
 job_timeout_max_updates = 3
 
+# How far in the future to timeout the job when the worker shuts down,
+# in seconds
+job_timeout_worker_stop_sec = 300
+
 # The number of times a job may be reassigned when it is detected
 # that a worker has stopped working on it.
 max_retry = 5
