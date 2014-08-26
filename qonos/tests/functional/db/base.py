@@ -1215,28 +1215,6 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
             'retry_count': 0,
         }
 
-        self.job_fixture_5 = {
-            'action': 'snapshot',
-            'tenant': unit_utils.TENANT1,
-            'schedule_id': unit_utils.SCHEDULE_UUID1,
-            'worker_id': None,
-            'status': 'HARD_TIMED_OUT',
-            'timeout': timeout,
-            'hard_timeout': hard_timeout,
-            'retry_count': 0,
-        }
-
-        self.job_fixture_6 = {
-            'action': 'snapshot',
-            'tenant': unit_utils.TENANT1,
-            'schedule_id': unit_utils.SCHEDULE_UUID1,
-            'worker_id': None,
-            'status': 'MAX_RETRIED',
-            'timeout': timeout,
-            'hard_timeout': hard_timeout,
-            'retry_count': 5,
-        }
-
     def _create_jobs(self, gap, *fixtures):
         now = timeutils.utcnow()
         self.jobs = []
@@ -1249,9 +1227,11 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
 
+        retries = 2
         self._create_jobs(10, self.job_fixture_1, self.job_fixture_2)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected = self.jobs[0]
         self.assertEqual(job['id'], expected['id'])
@@ -1264,6 +1244,7 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
 
+        retries = 2
         self._create_jobs(10, self.job_fixture_1)
 
         actual_job = db_api.job_get_by_id(self.jobs[0]['id'])
@@ -1272,6 +1253,7 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
 
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected_job = self.jobs[0]
         self.assertEqual(job['id'], expected_job['id'])
@@ -1299,22 +1281,27 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
             'retry_count': 0,
         }
 
+        retries = 2
         self._create_jobs(10, job_fixture)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
 
         job2 = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         self.assertEqual(job2, None)
 
     def test_get_next_job_skip_done(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
+        retries = 2
         self._create_jobs(10, self.job_fixture_3, self.job_fixture_1)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected = self.jobs[1]
         self.assertEqual(job['id'], expected['id'])
@@ -1326,29 +1313,15 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
     def test_get_next_job_skip_cancelled(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
+        retries = 2
         self._create_jobs(10, self.job_fixture_4, self.job_fixture_1)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected = self.jobs[1]
         self.assertEqual(job['id'], expected['id'])
         self.assertEqual(job['worker_id'], unit_utils.WORKER_UUID1)
-        self.assertEqual(job['timeout'], new_timeout)
-        self.assertEqual(job['hard_timeout'], expected['hard_timeout'])
-        self.assertEqual(job['retry_count'], expected['retry_count'] + 1)
-
-    def test_get_next_job_skip_hard_timed_out(self):
-        now = timeutils.utcnow()
-        new_timeout = now + datetime.timedelta(hours=3)
-        self._create_jobs(10, self.job_fixture_5, self.job_fixture_1)
-        job = db_api.job_get_and_assign_next_by_action('snapshot',
-                                                       unit_utils.WORKER_UUID1,
-                                                       new_timeout)
-        expected = self.jobs[1]
-        self.assertEqual(job['id'], expected['id'])
-        self.assertEqual(job['worker_id'], unit_utils.WORKER_UUID1)
-        self.assertNotEqual(job['status'], 'HARD_TIMED_OUT')
-        self.assertEqual(job['status'], expected['status'])
         self.assertEqual(job['timeout'], new_timeout)
         self.assertEqual(job['hard_timeout'], expected['hard_timeout'])
         self.assertEqual(job['retry_count'], expected['retry_count'] + 1)
@@ -1356,10 +1329,12 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
     def test_get_next_job_timed_out(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
+        retries = 2
         self.job_fixture_2['timeout'] = now + datetime.timedelta(seconds=5)
         self._create_jobs(10, self.job_fixture_2, self.job_fixture_1)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected = self.jobs[0]
         self.assertEqual(job['id'], expected['id'])
@@ -1368,18 +1343,21 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
         self.assertEqual(job['hard_timeout'], expected['hard_timeout'])
         self.assertEqual(job['retry_count'], expected['retry_count'] + 1)
 
-    def test_get_next_job_skip_max_retried(self):
+    def test_get_next_job_too_many_retries(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
-        self._create_jobs(10, self.job_fixture_6, self.job_fixture_1)
+        now = timeutils.utcnow()
+        retries = 2
+        self.job_fixture_2['retry_count'] = 3
+        self.job_fixture_2['timeout'] = now + datetime.timedelta(seconds=5)
+        self._create_jobs(10, self.job_fixture_2, self.job_fixture_1)
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
+                                                       retries,
                                                        new_timeout)
         expected = self.jobs[1]
         self.assertEqual(job['id'], expected['id'])
         self.assertEqual(job['worker_id'], unit_utils.WORKER_UUID1)
-        self.assertNotEqual(job['status'], 'MAX_RETRIED')
-        self.assertEqual(job['status'], expected['status'])
         self.assertEqual(job['timeout'], new_timeout)
         self.assertEqual(job['hard_timeout'], expected['hard_timeout'])
         self.assertEqual(job['retry_count'], expected['retry_count'] + 1)

@@ -70,9 +70,9 @@ class TestSQLAlchemyOptimisticLocking(base.TestJobsDBGetNextJobApi):
         new_timeout = timeutils.utcnow() + datetime.timedelta(hours=3)
 
         worker1_job = base.db_api.job_get_and_assign_next_by_action(
-            'snapshot', workers[0], new_timeout)
+            'snapshot', workers[0], 2, new_timeout)
         worker2_job = base.db_api.job_get_and_assign_next_by_action(
-            'snapshot', workers[1], new_timeout)
+            'snapshot', workers[1], 2, new_timeout)
 
         return worker1_job, worker2_job
 

@@ -36,12 +36,17 @@ action_overrides = snapshot
 
 # Default settings for actions if not otherwise specified below
 [action_default]
+# The number of times a job may be reassigned when it is detected
+# that a worker has stopped working on it.
+max_retry = 3
+
 # The total amount of time that a job will be worked on (including
 # retries) before it is considered failed completely.
 timeout_seconds = 3600
 
 # Settings for the 'snapshot' action
 [action_snapshot]
+max_retry = 2
 timeout_seconds = 14400
 
 [paste_deploy]
