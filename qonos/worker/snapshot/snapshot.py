@@ -33,15 +33,13 @@ import qonos.openstack.common.log as logging
 import qonos.qonosclient.exception as qonos_ex
 from qonos.worker import worker
 
+
 LOG = logging.getLogger(__name__)
 
 snapshot_worker_opts = [
     cfg.StrOpt('nova_client_factory_class',
                default='qonos.worker.snapshot.simple_nova_client_factory.'
                        'NovaClientFactory'),
-    cfg.StrOpt('glance_client_factory_class',
-               default='qonos.worker.snapshot.simple_glance_client_factory.'
-                       'GlanceClientFactory'),
     cfg.IntOpt('image_poll_interval_sec', default=30,
                help=_('How often to poll Nova for the image status')),
     cfg.IntOpt('job_update_interval_sec', default=300,
@@ -81,8 +79,7 @@ class SnapshotProcessor(worker.JobProcessor):
         super(SnapshotProcessor, self).__init__()
         self.current_job = None
 
-    def init_processor(self, worker, nova_client_factory=None,
-                       glance_client_factory=None):
+    def init_processor(self, worker, nova_client_factory=None):
         super(SnapshotProcessor, self).init_processor(worker)
         self.current_job = None
         self.max_retry = CONF.snapshot_worker.max_retry
@@ -105,15 +102,10 @@ class SnapshotProcessor(worker.JobProcessor):
         self.timeout_worker_stop = datetime.timedelta(
             CONF.snapshot_worker.job_timeout_worker_stop_sec)
 
-        if nova_client_factory is None:
+        if not nova_client_factory:
             nova_client_factory = importutils.import_object(
                 CONF.snapshot_worker.nova_client_factory_class)
         self.nova_client_factory = nova_client_factory
-
-        if glance_client_factory is None:
-            glance_client_factory = importutils.import_object(
-                CONF.snapshot_worker.glance_client_factory_class)
-        self.glance_client_factory = glance_client_factory
 
     def process_job(self, job):
         LOG.info(_("Worker %(worker_id)s processing job: %(job)s") %
@@ -377,7 +369,7 @@ class SnapshotProcessor(worker.JobProcessor):
                           'retention': retention})
                 for image in to_delete:
                     image_id = image.id
-                    self._get_glance_client().delete_image(image_id)
+                    self._get_nova_client().images.delete(image_id)
                     LOG.info(_('Worker %(worker_id)s removed image '
                                '%(image_id)s') %
                              {'worker_id': self.worker.worker_id,
@@ -410,10 +402,21 @@ class SnapshotProcessor(worker.JobProcessor):
         return retention
 
     def _find_scheduled_images_for_server(self, instance_id):
-        images = self._get_glance_client()\
-            .get_scheduled_images_by_instance(instance_id)
+        images = self._get_nova_client().images.list(detailed=True)
+        scheduled_images = []
+        for image in images:
+            metadata = image.metadata
+            # Note(Hemanth): In the following condition,
+            # 'image.status.upper() == "ACTIVE"' is a temporary hack to
+            # incorporate rm2400. Ideally, this filtering should be performed
+            # by passing an appropriate filter to the novaclient.
+            if (metadata.get("org.openstack__1__created_by") ==
+               "scheduled_images_service" and
+               metadata.get("instance_uuid") == instance_id and
+               image.status.upper() == "ACTIVE"):
+                scheduled_images.append(image)
 
-        scheduled_images = sorted(images,
+        scheduled_images = sorted(scheduled_images,
                                   key=attrgetter('created'),
                                   reverse=True)
 
@@ -421,12 +424,13 @@ class SnapshotProcessor(worker.JobProcessor):
 
     def _get_image_status(self, image_id):
         """
-        Get image status with glanceclient
+        Get image status with novaclient
         """
         image_status = None
-        image = self._get_glance_client().get_image(image_id)
-        if image is not None and image.status is not None:
-            image_status = image.status.upper()
+        image = self._get_nova_client().images.get(image_id)
+
+        if image is not None:
+            image_status = image.status
 
         return image_status
 
@@ -434,10 +438,6 @@ class SnapshotProcessor(worker.JobProcessor):
         nova_client = self.nova_client_factory.get_nova_client(
             self.current_job)
         return nova_client
-
-    def _get_glance_client(self):
-        glance_client = self.glance_client_factory.get_glance_client()
-        return glance_client
 
     def _job_succeeded(self, job):
         response = self.update_job(job['id'], 'DONE')

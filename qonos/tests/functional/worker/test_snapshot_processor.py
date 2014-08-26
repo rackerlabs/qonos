@@ -53,12 +53,7 @@ class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
         nova_client_factory = self._mock_nova_client_factory(self.job,
                                                              self.nova_client)
 
-        self.glance_client = self._mock_glance_client(self.images)
-        glance_client_factory = self._mock_glance_client_factory(
-            self.glance_client)
-
-        self.init_processor(worker, nova_client_factory=nova_client_factory,
-                            glance_client_factory=glance_client_factory)
+        self.init_processor(worker, nova_client_factory=nova_client_factory)
         self._mock_notification_calls()
 
         return self
@@ -122,26 +117,6 @@ class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
             mock.Mock(job, return_value=nova_client)
         return nova_client_factory
 
-    def _mock_glance_client(self, images):
-        glance_client = mock.MagicMock()
-
-        if images and len(images) == 1:
-            glance_client.get_image = mock.Mock(mock.ANY,
-                                                return_value=images[0])
-        else:
-            glance_client.get_image = mock.Mock(mock.ANY, side_effect=images)
-
-        glance_client.get_scheduled_images_by_instance = mock.Mock(
-            mock.ANY, return_value=images)
-
-        return glance_client
-
-    def _mock_glance_client_factory(self, glance_client):
-        glance_client_factory = mock.Mock()
-        glance_client_factory.get_glance_client = \
-            mock.Mock(return_value=glance_client)
-        return glance_client_factory
-
 
 class BaseTestSnapshotProcessor(utils.BaseTestCase):
 
@@ -151,7 +126,6 @@ class BaseTestSnapshotProcessor(utils.BaseTestCase):
 
     def tearDown(self):
         super(BaseTestSnapshotProcessor, self).tearDown()
-        timeutils.clear_time_override()
 
     def server_instance_fixture(self, id_, name, retention=1):
         server = mock.Mock()
@@ -311,8 +285,8 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
         with TestableSnapshotProcessor(job,
                                        server, []) as processor:
             exc = exceptions.NotFound('Instance not found!!')
-            processor.glance_client.get_image = mock.Mock(mock.ANY,
-                                                          side_effect=exc)
+            processor.nova_client.images.get = mock.Mock(mock.ANY,
+                                                         side_effect=exc)
             processor.process_job(job)
 
             org_err_msg = tb.format_exception_only(type(exc), exc)
@@ -339,8 +313,9 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
         job['metadata']['image_id'] = 'IMAGE_ID01'
 
         with TestableSnapshotProcessor(job, server, images) as processor:
-            processor.glance_client.get_scheduled_images_by_instance = \
-                mock.Mock(mock.ANY, return_value=[self.image_fixture(
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY,
+                return_value=[self.image_fixture(
                     'IMAGE_ID01', 'ACTIVE', server.id)])
             processor.process_job(job)
 
@@ -628,31 +603,34 @@ class TestSnapshotProcessorPolling(BaseTestSnapshotProcessor):
         timeutils.advance_time_delta(
             datetime.timedelta(seconds=timeout_extension))
 
-        with TestableSnapshotProcessor(job, server, images) as p:
-            p.next_timeout = now + p.initial_timeout
-            p.next_update = now + p.update_interval
+        try:
+            with TestableSnapshotProcessor(job, server, images) as p:
+                p.next_timeout = now + p.initial_timeout
+                p.next_update = now + p.update_interval
 
-            #NOTE(venkatesh): unfortunately had to use a protected method
-            # for testing. Else there seems to be no easier way to test
-            # this scenario. we need to fix this as part of refactoring
-            # SnapshotJobProcessor.
-            while True:
-                try:
-                    p._update_job(job['id'], 'PROCESSING')
-                except exception.OutOfTimeException:
-                    break
-                timeutils.advance_time_delta(
-                    datetime.timedelta(seconds=timeout_extension))
+                #NOTE(venkatesh): unfortunately had to use a protected method
+                # for testing. Else there seems to be no easier way to test
+                # this scenario. we need to fix this as part of refactoring
+                # SnapshotJobProcessor.
+                while True:
+                    try:
+                        p._update_job(job['id'], 'PROCESSING')
+                    except exception.OutOfTimeException:
+                        break
+                    timeutils.advance_time_delta(
+                        datetime.timedelta(seconds=timeout_extension))
 
-            total_timeout_duration = datetime.timedelta(
-                seconds=(timeout_extension * job_timeout_max_updates_count)
-            )
-            self.assertEqual(
-                now + (p.initial_timeout +
-                       total_timeout_duration),
-                p.next_timeout
-            )
-            self.assertEqual(3, p.timeout_count)
+                total_timeout_duration = datetime.timedelta(
+                    seconds=(timeout_extension * job_timeout_max_updates_count)
+                )
+                self.assertEqual(
+                    now + (p.initial_timeout +
+                           total_timeout_duration),
+                    p.next_timeout
+                )
+                self.assertEqual(3, p.timeout_count)
+        finally:
+            timeutils.clear_time_override()
 
     def test_polling_job_is_successful_after_first_timeout(self):
         server = self.server_instance_fixture("INSTANCE_ID", "test")
@@ -718,13 +696,12 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
         img_snapshot = [self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)]
 
         with TestableSnapshotProcessor(job, server, img_snapshot) as processor:
-            processor.glance_client.get_scheduled_images_by_instance = \
-                mock.Mock(mock.ANY, return_value=img_snapshot)
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=img_snapshot)
 
             processor.process_job(job)
 
-            self.assertEqual(0,
-                             processor.glance_client.delete_images.call_count)
+            self.assertEqual(0, processor.nova_client.images.delete.call_count)
             self.assertFalse(processor.qonosclient.delete_schedule.called)
             self.assertEqual(img_snapshot[0].id, job['metadata']['image_id'])
             self.assertEqual('DONE', job['status'])
@@ -744,14 +721,13 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.glance_client.get_scheduled_images_by_instance = \
-                mock.Mock(mock.ANY, return_value=all_instance_images)
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(2,
-                             processor.glance_client.delete_image.call_count)
-            processor.glance_client.delete_image.has_calls(
+            self.assertEqual(2, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
                 [mock.call('OLD_IMAGE_02'), mock.call('OLD_IMAGE_01')])
             self.assertFalse(processor.qonosclient.delete_schedule.called)
             self.assertEqual(current_image.id, job['metadata']['image_id'])
@@ -769,14 +745,98 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
 
         with TestableSnapshotProcessor(job, server,
                                        [current_image]) as processor:
-            processor.glance_client.get_scheduled_images_by_instance = \
-                mock.Mock(mock.ANY, return_value=all_instance_images)
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
 
             processor.process_job(job)
 
-            self.assertEqual(0,
-                             processor.glance_client.delete_image.call_count)
+            self.assertEqual(0, processor.nova_client.images.delete.call_count)
             self.assertEqual(current_image.id, job['metadata']['image_id'])
+            self.assertEqual('DONE', job['status'])
+
+    def test_process_retention_only_for_images_with_given_instance(self):
+        some_other_server_id = "OTHER_INSTANCE_ID"
+        server = self.server_instance_fixture("INSTANCE_ID", "test",
+                                              retention=2)
+        job = self.job_fixture(server.id)
+
+        existing_snapshot_images = [
+            self.image_fixture('OLD_IMAGE_01', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_XX', 'ACTIVE', some_other_server_id),
+            self.image_fixture('OLD_IMAGE_03', 'ACTIVE', server.id),
+        ]
+        current_image = self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)
+        all_instance_images = [current_image] + existing_snapshot_images
+
+        with TestableSnapshotProcessor(job, server,
+                                       [current_image]) as processor:
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
+
+            processor.process_job(job)
+
+            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
+                [mock.call('OLD_IMAGE_01')])
+            self.assertEqual('DONE', job['status'])
+
+    def test_process_retention_only_for_images_which_are_active(self):
+        server = self.server_instance_fixture("INSTANCE_ID", "test",
+                                              retention=2)
+        job = self.job_fixture(server.id)
+
+        existing_snapshot_images = [
+            self.image_fixture('OLD_IMAGE_01', 'QUEUED', server.id),
+            self.image_fixture('OLD_IMAGE_02', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_03', 'DELETED', server.id),
+            self.image_fixture('OLD_IMAGE_04', 'ACTIVE', server.id),
+        ]
+        current_image = self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)
+        all_instance_images = [current_image] + existing_snapshot_images
+
+        with TestableSnapshotProcessor(job, server,
+                                       [current_image]) as processor:
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
+
+            processor.process_job(job)
+
+            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
+                [mock.call('OLD_IMAGE_02')])
+            self.assertEqual('DONE', job['status'])
+
+    def test_process_retention_only_images_created_by_scheduled_images_service(
+            self):
+        server = self.server_instance_fixture("INSTANCE_ID", "test",
+                                              retention=1)
+        job = self.job_fixture(server.id)
+
+        existing_snapshot_images = [
+            self.image_fixture(
+                'OLD_IMAGE_02', 'ACTIVE', server.id, metadata_dict={
+                    "org.openstack__1__created_by": "some_other_service"}),
+            self.image_fixture(
+                'OLD_IMAGE_03', 'ACTIVE', server.id, metadata_dict={
+                    "org.openstack__1__created_by": None}),
+            self.image_fixture(
+                'OLD_IMAGE_04', 'ACTIVE', server.id, metadata_dict={
+                    "org.openstack__1__created_by": "scheduled_images_service"
+                }),
+        ]
+        current_image = self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)
+        all_instance_images = [current_image] + existing_snapshot_images
+
+        with TestableSnapshotProcessor(job, server,
+                                       [current_image]) as processor:
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
+
+            processor.process_job(job)
+
+            self.assertEqual(1, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
+                [mock.call('OLD_IMAGE_04')])
             self.assertEqual('DONE', job['status'])
 
     def test_process_retention_with_bad_retention(self):

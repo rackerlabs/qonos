@@ -1,3 +1,5 @@
+# vim: tabstop=4 shiftwidth=4 softtabstop=4
+
 #    Copyright 2013 Rackspace
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -49,8 +51,6 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.rax_scheduled_images_python_novaclient_ext =\
             self.mox.CreateMockAnything()
         self.nova_client.images = self.mox.CreateMockAnything()
-
-        self.glance_client = self.mox.CreateMockAnything()
 
         self.qonos_client = self.mox.CreateMockAnything()
         self.worker = self.mox.CreateMockAnything()
@@ -141,8 +141,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str))
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -181,8 +180,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str))
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -223,8 +221,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str))
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -279,8 +276,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
         del self.job['metadata']['instance_id']
         processor.process_job(self.job)
@@ -292,7 +288,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
@@ -324,8 +320,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         utils.generate_notification(None, 'qonos.job.run.end', mox.IsA(dict),
                                     mox.IsA(str))
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         self.worker.update_job(fakes.JOB_ID, 'DONE', timeout=None,
                                error_message=None).\
             AndReturn({'status': 'CANCELLED', 'timeout': self.job['timeout']})
@@ -341,9 +336,9 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.job['metadata']['image_id'] = IMAGE_ID
         self.job['status'] = 'PROCESSING'
         # Note NO call to create_image is expected
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
 
         mock_retention = MockRetention()
@@ -355,8 +350,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -369,13 +363,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.job['status'] = 'ERROR'
 
         #make an error checking the previous image
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ERROR'))
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
@@ -394,8 +388,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -407,9 +400,9 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.job['metadata']['image_id'] = IMAGE_ID
         self.job['status'] = 'ERROR'
 
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
 
         mock_retention = MockRetention()
@@ -425,8 +418,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str)).MultipleTimes()
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -438,13 +430,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.job['metadata']['image_id'] = IMAGE_ID
         self.job['status'] = 'ERROR'
 
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('KILLED'))
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
 
         mock_retention = MockRetention()
@@ -456,8 +448,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -469,13 +460,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
@@ -492,8 +483,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -518,18 +508,18 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndReturn(mock_retention)
-        self._simple_prepare_worker_mock(1)
+        self._simple_prepare_worker_mock(2)
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
                                     mox.IsA(str))
@@ -541,8 +531,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(job)
@@ -567,13 +556,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
@@ -595,8 +584,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(job)
@@ -614,8 +602,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
             base_time + datetime.timedelta(minutes=120, seconds=5),
             base_time + datetime.timedelta(minutes=180, seconds=5),
             base_time + datetime.timedelta(minutes=240, seconds=5),
-            base_time + datetime.timedelta(minutes=300, seconds=5),
-        ]
+            ]
         timeutils.set_time_override_seq(time_seq)
 
         job = copy.deepcopy(self.job)
@@ -624,9 +611,9 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
-        self.glance_client.get_image(IMAGE_ID).MultipleTimes().AndReturn(
+        self.nova_client.images.get(IMAGE_ID).MultipleTimes().AndReturn(
             MockImageStatus('SAVING'))
 
         self._init_worker_mock()
@@ -648,8 +635,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str)).MultipleTimes()
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(job)
@@ -685,23 +671,27 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                 mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
 
         if include_queued:
-            self.glance_client.get_image(IMAGE_ID).AndReturn(
+            self.nova_client.images.get(IMAGE_ID).AndReturn(
                 MockImageStatus('QUEUED'))
         else:
-            self.glance_client.get_image(IMAGE_ID).AndReturn(
+            self.nova_client.images.get(IMAGE_ID).AndReturn(
+                MockImageStatus('SAVING'))
+            self.nova_client.images.get(IMAGE_ID).AndReturn(
                 MockImageStatus('SAVING'))
 
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('SAVING'))
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             error_status)
 
         self._init_worker_mock(skip_metadata_update=(not include_create))
 
+        self.worker.update_job(fakes.JOB_ID, 'PROCESSING', timeout=None,
+                               error_message=None)
         self.worker.update_job(fakes.JOB_ID, 'PROCESSING', timeout=None,
                                error_message=None)
         self.worker.update_job(fakes.JOB_ID, 'PROCESSING', timeout=None,
@@ -747,8 +737,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(job)
@@ -794,15 +783,14 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention(3)
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndReturn(mock_retention)
         mock_server = MockServer()
         image_list = self._create_images_list(mock_server.id, 3)
-        self.glance_client.get_scheduled_images_by_instance(fakes.INSTANCE_ID)\
-            .AndReturn(image_list)
+        self.nova_client.images.list(detailed=True).AndReturn(image_list)
         self._init_worker_mock()
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
@@ -815,8 +803,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str))
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -828,7 +815,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention("gabe 1337")
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
@@ -846,8 +833,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -859,7 +845,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndRaise(exceptions.NotFound('404!'))
@@ -876,8 +862,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -889,7 +874,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndRaise(Exception())
@@ -906,8 +891,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=None)
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
         processor.process_job(self.job)
@@ -920,18 +904,17 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
         self.nova_client.servers.create_image(mox.IsA(str),
             mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
-        self.glance_client.get_image(IMAGE_ID).AndReturn(
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention(3)
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndReturn(mock_retention)
         mock_server = MockServer(instance_id=instance_id)
         image_list = self._create_images_list(mock_server.id, 5)
-        self.glance_client.get_scheduled_images_by_instance(fakes.INSTANCE_ID)\
-            .AndReturn(image_list)
+        self.nova_client.images.list(detailed=True).AndReturn(image_list)
         # The image list happens to be in descending created order
-        self.glance_client.delete_image(image_list[-2].id)
-        self.glance_client.delete_image(image_list[-1].id)
+        self.nova_client.images.delete(image_list[-2].id)
+        self.nova_client.images.delete(image_list[-1].id)
         self._init_worker_mock()
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
@@ -944,10 +927,47 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str))
         self.mox.ReplayAll()
 
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         processor.init_processor(self.worker)
 
+        processor.process_job(self.job)
+
+        self.mox.VerifyAll()
+
+    def test_doesnt_delete_images_from_another_instance(self):
+        timeutils.set_time_override()
+        instance_id = self.job['metadata']['instance_id']
+        self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
+        self.nova_client.servers.create_image(mox.IsA(str),
+            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.images.get(IMAGE_ID).AndReturn(
+            MockImageStatus('ACTIVE'))
+        mock_retention = MockRetention(3)
+        self.nova_client.rax_scheduled_images_python_novaclient_ext.\
+            get(mox.IsA(str)).AndReturn(mock_retention)
+        mock_server = MockServer(instance_id=instance_id)
+        image_list = self._create_images_list(mock_server.id, 5)
+        to_delete = image_list[3:]
+        image_list.extend(self._create_images_list(
+                uuidutils.generate_uuid(), 3))
+        self.nova_client.images.list(detailed=True).AndReturn(image_list)
+        # The image list happens to be in descending created order
+        self.nova_client.images.delete(to_delete[0].id)
+        self.nova_client.images.delete(to_delete[1].id)
+        self._simple_prepare_worker_mock()
+        self.mox.StubOutWithMock(utils, 'generate_notification')
+        utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
+                                    mox.IsA(str))
+        utils.generate_notification(None, 'qonos.job.update', mox.IsA(dict),
+                                    mox.IsA(str)).MultipleTimes()
+        self.worker.update_job(fakes.JOB_ID, 'DONE', timeout=None,
+                               error_message=None)
+        utils.generate_notification(None, 'qonos.job.run.end', mox.IsA(dict),
+                                    mox.IsA(str))
+        self.mox.ReplayAll()
+
+        processor = TestableSnapshotProcessor(self.nova_client)
+        processor.init_processor(self.worker)
         processor.process_job(self.job)
 
         self.mox.VerifyAll()
@@ -956,8 +976,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         schedule = {}
         timeutils.set_time_override(datetime.datetime(2013, 3, 22, 22, 39, 27))
         timestamp = '1363991967'
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         image_name = processor.generate_image_name(schedule, 'test')
         self.assertEqual(image_name, 'Daily-test-' + timestamp)
 
@@ -965,8 +984,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         schedule = {'day_of_week': 1}
         timeutils.set_time_override(datetime.datetime(2013, 3, 22, 22, 39, 27))
         timestamp = '1363991967'
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         image_name = processor.generate_image_name(schedule, 'test')
         self.assertEqual(image_name, 'Weekly-test-' + timestamp)
 
@@ -974,8 +992,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         schedule = {}
         timeutils.set_time_override(datetime.datetime(2013, 3, 22, 22, 39, 27))
         timestamp = '1363991967'
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         fake_server_name = 'a' * 255
         prefix = 'Daily'
         expected_server_name = 'a' * (255 - len(timestamp) -
@@ -987,15 +1004,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
     def test_get_image_prefix_daily(self):
         schedule = {}
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         prefix = processor._get_image_prefix(schedule)
         self.assertEqual('Daily', prefix)
 
     def test_get_image_prefix_weekly(self):
         schedule = {'day_of_week': 1}
-        processor = TestableSnapshotProcessor(self.nova_client,
-                                              self.glance_client)
+        processor = TestableSnapshotProcessor(self.nova_client)
         prefix = processor._get_image_prefix(schedule)
         self.assertEqual('Weekly', prefix)
 
@@ -1011,6 +1026,7 @@ class MockNovaClientFactory(object):
 class MockNovaClient(object):
     def __init__(self):
         self.servers = None
+        self.images = None
 
 
 class MockSchedule(object):
@@ -1022,9 +1038,6 @@ class MockImageStatus(object):
     def __init__(self, status):
         self.status = status
 
-    def __repr__(self):
-        return str(self.__dict__)
-
 
 class MockImage(object):
     def __init__(self, image_id, created, instance_id, status='ACTIVE'):
@@ -1034,9 +1047,6 @@ class MockImage(object):
         self.metadata = {
             'instance_uuid': instance_id,
             }
-
-    def __repr__(self):
-        return str(self.__dict__)
 
 
 class MockServer(object):
@@ -1051,22 +1061,18 @@ class MockRetention(object):
 
 
 class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
-    def __init__(self, nova_client, glance_client):
+    def __init__(self, nova_client):
         super(TestableSnapshotProcessor, self).__init__()
         self.nova_client = nova_client
-        self.glance_client = glance_client
 
     def init_processor(self, worker, nova_client_factory=None):
-        if nova_client_factory is None:
+        if not nova_client_factory:
             nova_client_factory = MockNovaClientFactory(self.nova_client)
         super(TestableSnapshotProcessor, self).init_processor(
             worker, nova_client_factory)
 
     def _get_nova_client(self):
         return self.nova_client
-
-    def _get_glance_client(self):
-        return self.glance_client
 
     def _get_utcnow(self):
         now = timeutils.utcnow()

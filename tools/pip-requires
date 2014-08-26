@@ -25,9 +25,6 @@ httplib2
 python-novaclient
 rax_scheduled_images_python_novaclient_ext
 
-# For snapshot worker to contact Glance
-python-glanceclient
-
 Paste
 
 python-daemon
