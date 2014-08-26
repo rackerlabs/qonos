@@ -146,9 +146,7 @@ class SnapshotProcessor(worker.JobProcessor):
 
         job_id = job['id']
 
-        hard_timeout = timeutils.normalize_time(
-            timeutils.parse_isotime(job['hard_timeout']))
-        hard_timed_out = hard_timeout <= self._get_utcnow()
+        hard_timed_out = job['hard_timeout'] <= self._get_utcnow()
         if hard_timed_out:
             msg = ('Job %(job_id)s has reached/exceeded its'
                    ' hard timeout: %(hard_timeout)s.' %

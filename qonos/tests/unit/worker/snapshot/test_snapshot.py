@@ -153,7 +153,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         mox.Reset(self.worker)
         self.mox.StubOutWithMock(utils, 'generate_notification')
         now = timeutils.utcnow()
-        self.job['hard_timeout'] = timeutils.strtime(at=now)
+        self.job['hard_timeout'] = now
 
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
                                     mox.IsA(str))
@@ -755,7 +755,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         self.mox.VerifyAll()
 
-    def test_process_job_should_exponentially_increase_timeout(self):
+    def test_process_job_should_exponentially_increases_timeout(self):
         status = MockImageStatus('ERROR')
         job = copy.deepcopy(self.job)
         self._do_test_process_job_should_update_image_error(status, job=job)
@@ -765,8 +765,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         timeutils.set_time_override(new_now)
         job['status'] = 'ERROR'
         job['retry_count'] = 2
-        job['hard_timeout'] = timeutils.strtime(
-            at=(new_now + datetime.timedelta(minutes=120)))
+        job['hard_timeout'] = new_now + datetime.timedelta(minutes=120)
         self._do_test_process_job_should_update_image_error(status,
             include_create=False, include_queued=False, is_retry=True, job=job)
 
