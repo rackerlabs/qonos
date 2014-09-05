@@ -37,6 +37,7 @@ api_opts = [
 
 action_opts = [
     cfg.IntOpt('timeout_seconds', default=60),
+    cfg.IntOpt('max_retry', default=5),
 ]
 
 CONF = cfg.CONF

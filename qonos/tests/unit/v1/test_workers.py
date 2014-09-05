@@ -262,7 +262,6 @@ class TestWorkersApi(test_utils.BaseTestCase):
         self.assertEqual(host, actual['host'])
 
     def test_delete(self):
-        request = unit_utils.get_fake_request(method='GET')
         request = unit_utils.get_fake_request(method='DELETE')
         self.controller.delete(request, self.worker_1['id'])
         self.assertRaises(exception.NotFound, db_api.worker_get_by_id,
@@ -289,6 +288,7 @@ class TestWorkersApi(test_utils.BaseTestCase):
         self.assertEqual(job['job'], None)
 
     def test_get_next_job_for_action(self):
+        self.config(group='action_default', max_retry=5)
         request = unit_utils.get_fake_request(method='POST')
         fixture = {'action': 'snapshot'}
         job = self.controller.get_next_job(request,
