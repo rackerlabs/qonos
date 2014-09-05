@@ -37,10 +37,6 @@ job_timeout_max_updates = 3
 # in seconds
 job_timeout_worker_stop_sec = 300
 
-# The number of times a job may be reassigned when it is detected
-# that a worker has stopped working on it.
-max_retry = 5
-
 [nova_client_factory]
 # Common options for either Nova client factory
 auth_protocol = 'http'
