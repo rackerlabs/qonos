@@ -1159,7 +1159,12 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
     def setUp(self):
         super(TestJobsDBGetNextJobApi, self).setUp()
         self.db_api = db_api
-        timeutils.set_time_override()
+        # There was an intermittent test failure and was able to catch
+        # this time being one which triggered it.
+        tmp = timeutils.parse_isotime('2014-09-05 20:05:56.629128'). \
+            replace(tzinfo=None)
+        timeutils.set_time_override(tmp)
+        #timeutils.set_time_override()
         self._create_job_fixtures()
 
     def tearDown(self):
@@ -1187,7 +1192,7 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
             'tenant': unit_utils.TENANT1,
             'schedule_id': unit_utils.SCHEDULE_UUID2,
             'worker_id': unit_utils.WORKER_UUID2,
-            'status': 'queued',
+            'status': 'QUEUED',
             'timeout': timeout,
             'hard_timeout': hard_timeout,
             'retry_count': 0,
@@ -1356,11 +1361,28 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
     def test_get_next_job_timed_out(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
+        #Job 1 based on fixture 2 times out in 5 seconds
         self.job_fixture_2['timeout'] = now + datetime.timedelta(seconds=5)
+        self.job_fixture_2['worker_id'] = unit_utils.WORKER_UUID2
+        self.job_fixture_2['status'] = 'ERROR'
+        #Job 2 based on fixture 1 times out in 125 seconds
+        self.job_fixture_1['timeout'] = now + datetime.timedelta(seconds=125)
+        self.job_fixture_1['worker_id'] = unit_utils.WORKER_UUID2
+        self.job_fixture_2['status'] = 'ERROR'
+        #Time is advanced by 20 seconds after this call
         self._create_jobs(10, self.job_fixture_2, self.job_fixture_1)
+        #Ensures that timeout test time is on the minute between the two
+        #job timeouts defined above
+        timeutils.set_time_override(now + datetime.timedelta(65))
+        now = timeutils.utcnow()
+        print("2. now: %s" % str(now))
         job = db_api.job_get_and_assign_next_by_action('snapshot',
                                                        unit_utils.WORKER_UUID1,
                                                        new_timeout)
+        print("Job 1: %s" % self.jobs[0]['id'])
+        print("Job 1 timeout: %s" % self.jobs[0]['timeout'])
+        print("Job 2: %s" % self.jobs[1]['id'])
+        print("Job 2 timeout: %s" % self.jobs[1]['timeout'])
         expected = self.jobs[0]
         self.assertEqual(job['id'], expected['id'])
         self.assertEqual(job['worker_id'], unit_utils.WORKER_UUID1)

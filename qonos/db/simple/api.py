@@ -426,12 +426,11 @@ def job_get_and_assign_next_by_action(action, worker_id, new_timeout):
     to the worker for worker_id.
     This must be an atomic action!"""
     job_ref = None
-    now = timeutils.utcnow()
+    now = timeutils.utcnow().replace(second=0, microsecond=0)
     jobs = _jobs_get_sorted()
     statuses = ['DONE', 'CANCELLED', 'HARD_TIMED_OUT', 'MAX_RETRIED']
     for job in jobs:
         if job['action'] == action and \
-                job['hard_timeout'] > now and \
                 job['status'] not in statuses and \
                 (job['worker_id'] is None or job['timeout'] <= now):
             job_ref = job
