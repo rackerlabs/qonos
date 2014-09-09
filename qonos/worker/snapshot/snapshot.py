@@ -114,6 +114,7 @@ class SnapshotProcessor(worker.JobProcessor):
         LOG.debug(_("Worker %(worker_id)s processing job: %(job)s") %
                   {'worker_id': self.worker.worker_id,
                    'job': str(job)})
+        self.current_job = job
         try:
             self._process_job(job)
         except exc.PollingException as e:
@@ -171,8 +172,6 @@ class SnapshotProcessor(worker.JobProcessor):
                       'msg': msg})
             return
 
-        self.current_job = job
-
         now = self._get_utcnow()
         self.next_timeout = now + self.initial_timeout
         self._job_processing(job, self.next_timeout)
@@ -224,7 +223,7 @@ class SnapshotProcessor(worker.JobProcessor):
             # another worker will pick it up before everything is shut down
             # and thus burn through the retries
             timeout = self._get_utcnow() + self.timeout_worker_stop
-            self._job_processing(job_id, timeout=timeout)
+            self._job_processing(self.current_job, timeout=timeout)
 
         LOG.debug("Snapshot complete")
 
