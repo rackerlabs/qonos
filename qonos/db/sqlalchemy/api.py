@@ -699,6 +699,9 @@ def job_get_and_assign_next_by_action(action, worker_id, new_timeout):
 
 
 def _job_get_next_by_action(session, now, action):
+    # Round off 'now' to minute precision to allow the SQL query cache to
+    # do more work
+    now_round_off = now.replace(second=0, microsecond=0)
     statuses = ['DONE', 'CANCELLED', 'HARD_TIMED_OUT', 'MAX_RETRIED']
     job_ref = session.query(models.Job)\
         .options(sa_orm.subqueryload('job_metadata'))\
@@ -706,7 +709,7 @@ def _job_get_next_by_action(session, now, action):
         .filter(sa_sql.or_(~models.Job.status.in_(statuses),
                            models.Job.status == None))\
         .filter(sa_sql.or_(models.Job.worker_id == None,
-                           models.Job.timeout <= now))\
+                           models.Job.timeout <= now_round_off))\
         .order_by(models.Job.updated_at.asc())\
         .first()
     return job_ref
