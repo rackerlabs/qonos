@@ -18,7 +18,8 @@
 """Utility methods for working with WSGI servers."""
 
 import eventlet
-eventlet.patcher.monkey_patch(all=False, socket=True)
+eventlet.patcher.monkey_patch(all=False, select=True, socket=True,
+                              thread=True, time=True)
 
 import datetime
 import errno
