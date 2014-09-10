@@ -16,13 +16,17 @@
 
 import datetime
 import httplib
+import uuid
 
 try:
     import json
 except ImportError:
     import simplejson as json
 
+import qonos.openstack.common.log as logging
 from qonos.qonosclient import exception
+
+LOG = logging.getLogger(__name__)
 
 
 class Client(object):
@@ -37,11 +41,19 @@ class Client(object):
         if body and isinstance(body, dict):
             body = json.dumps(body)
         try:
+            qonos_req_id = uuid.uuid4()
+            msg = 'Making Qonos request, method: %s, url: %s, id: %s'
+            LOG.info(msg % (method, url, qonos_req_id))
+
             conn.request(method, url, body=body,
-                         headers={'Content-Type': 'application/json'})
+                         headers={'Content-Type': 'application/json',
+                                  'x-qonos-request-id': str(qonos_req_id)})
         except Exception:
             msg = 'Could not contact Qonos API, is it running?'
             raise exception.ConnRefused(msg)
+
+        msg = 'Reading response for Qonos request, method: %s, url: %s, id: %s'
+        LOG.info(msg % (method, url, qonos_req_id))
 
         response = conn.getresponse()
         if response.status == 400:
