@@ -1181,7 +1181,7 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
             'tenant': unit_utils.TENANT1,
             'schedule_id': unit_utils.SCHEDULE_UUID1,
             'worker_id': None,
-            'status': None,
+            'status': 'QUEUED',
             'timeout': timeout,
             'hard_timeout': hard_timeout,
             'retry_count': 0,
