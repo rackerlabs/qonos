@@ -19,6 +19,7 @@ Defines interface for DB access
 """
 
 import functools
+import inspect
 import logging
 import time
 
@@ -48,6 +49,7 @@ db_opts = [
     cfg.IntOpt('sql_max_retries', default=60),
     cfg.IntOpt('sql_retry_interval', default=1),
     cfg.BoolOpt('db_auto_create', default=True),
+    cfg.BoolOpt('log_query_times', default=False)
 ]
 
 CONF = cfg.CONF
@@ -152,6 +154,35 @@ def reset():
     models.register_models(_ENGINE)
 
 
+def _before_cursor_execute(conn, cursor, statement, parameters, context,
+        executemany):
+    stack = inspect.stack()
+    try:
+        # NOTE(alaski): stack is a list of tuples like (_, filename, _,
+        # method_name, _, _) where _ are irrelevant slots. The list is
+        # filtered to find the call through sqlalchemy/api.py and then
+        # the method_name is pulled from that stack frame.
+        db_frames = filter(lambda x: x[1].endswith('sqlalchemy/api.py'), stack)
+        method = db_frames[0][3]
+    except IndexError:
+        method = 'unknown'
+    conn.info['query_start_time'] = timeutils.utcnow()
+    conn.info['query_method'] = method
+
+
+def _after_cursor_execute(conn, cursor, statement, parameters, context,
+        executemany):
+    method = conn.info.get('query_method')
+    start_time = conn.info.get('query_start_time')
+    if start_time:
+        now = timeutils.utcnow()
+        total = (now - start_time).total_seconds()
+    else:
+        total = -1.0
+    msg = "Query time for '%s': %f. Query statement: %s"
+    LOG.debug(msg % (method, total, statement))
+
+
 def get_engine():
     global _ENGINE, _MAX_RETRIES, _RETRY_INTERVAL
     if not _ENGINE:
@@ -169,6 +200,12 @@ def get_engine():
 
             if 'mysql' in connection_dict.drivername:
                 sqlalchemy.event.listen(_ENGINE, 'checkout', ping_listener)
+
+            if CONF.log_query_times:
+                sqlalchemy.event.listen(_ENGINE, 'before_cursor_execute',
+                                        _before_cursor_execute())
+                sqlalchemy.event.listen(_ENGINE, 'after_cursor_execute',
+                                        _after_cursor_execute())
 
             _ENGINE.connect = wrap_db_error(_ENGINE.connect)
             _ENGINE.connect()
