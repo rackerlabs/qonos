@@ -55,7 +55,6 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.qonos_client = self.mox.CreateMockAnything()
         self.worker = self.mox.CreateMockAnything()
         self.worker.get_qonos_client().AndReturn(self.qonos_client)
-
         self.snapshot_meta = {
             "org.openstack__1__created_by": "scheduled_images_service"
             }
@@ -1070,6 +1069,9 @@ class TestableSnapshotProcessor(snapshot.SnapshotProcessor):
             nova_client_factory = MockNovaClientFactory(self.nova_client)
         super(TestableSnapshotProcessor, self).init_processor(
             worker, nova_client_factory)
+
+    def get_worker_tag(self):
+        return 'W:%s P:1234 C:5678' % fakes.WORKER_ID
 
     def _get_nova_client(self):
         return self.nova_client
