@@ -8,7 +8,7 @@ import gettext
 import os
 import sys
 
-# If ../glance/__init__.py exists, add ../ to Python search path, so that
+# If ../qonos/__init__.py exists, add ../ to Python search path, so that
 # it will override what happens to be installed in /usr/(local/)lib/python...
 possible_topdir = os.path.normpath(os.path.join(os.path.abspath(sys.argv[0]),
     os.pardir,
@@ -18,9 +18,10 @@ if os.path.exists(os.path.join(possible_topdir, 'qonos', '__init__.py')):
 
 gettext.install('qonos', unicode=1)
 
-from qonos.api import api
 from qonos.common import config
+from qonos.common import exception
 from qonos.openstack.common import log
+from qonos.openstack.common import wsgi
 
 
 def fail(returncode, e):
@@ -31,7 +32,10 @@ if __name__ == '__main__':
     try:
         config.parse_args()
         log.setup('qonos')
-        app = api.API(config.load_paste_app())
-        app.run()
+        server = wsgi.Server()
+        server.start(config.load_paste_app())
+        server.wait()
+    except exception.WorkerCreationFailure as e:
+        fail(2, e)
     except RuntimeError, e:
         fail(1, e)
