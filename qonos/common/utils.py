@@ -17,6 +17,7 @@
 import contextlib
 import datetime
 import logging as pylog
+import multiprocessing
 import sys
 
 from croniter.croniter import croniter
@@ -145,3 +146,15 @@ class LazyPluggable(object):
     def __getattr__(self, key):
         backend = self.__get_backend()
         return getattr(backend, key)
+
+
+def get_worker_count():
+    """Utility to get the default worker count.
+
+    @return: The number of CPUs if that can be determined, else a default
+             worker count of 1 is returned.
+    """
+    try:
+        return multiprocessing.cpu_count()
+    except NotImplementedError:
+        return 1
