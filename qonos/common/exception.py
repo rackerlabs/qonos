@@ -60,7 +60,3 @@ class OutOfTimeException(QonosException):
 
 class DatabaseMigrationError(QonosException):
     message = _("There was an error migrating the database.")
-
-
-class WorkerCreationFailure(QonosException):
-    message = _("Server worker creation failed: %(reason)s.")
