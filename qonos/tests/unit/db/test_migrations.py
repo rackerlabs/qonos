@@ -435,7 +435,8 @@ class TestMigrations(utils.BaseTestCase):
         self.assertEqual(expected_col_names, col_names)
 
         #try insert and fetch a record
-        now = datetime.datetime.now()
+        # Setting microsecond to 0 because using MySQL it only goes to seconds
+        now = datetime.datetime.now().replace(microsecond=0)
         ins_schedule = {
             'id': 'WORKER-1',
             'tenant': 'OWNER-1',
@@ -802,6 +803,21 @@ class TestMigrations(utils.BaseTestCase):
 
         self.assertIn((index, columns), index_data)
 
+    def _post_downgrade_008(self, engine):
+        table = "schedules"
+        index = "next_run_idx"
+        columns = ["next_run"]
+
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        index_data = [(idx.name, idx.columns.keys())
+                      for idx in new_table.indexes]
+
+        self.assertNotIn((index, columns), index_data)
+
     def _check_009(self, engine, data):
         table = "jobs"
         index = "hard_timeout_idx"
@@ -815,6 +831,20 @@ class TestMigrations(utils.BaseTestCase):
                       for idx in new_table.indexes]
 
         self.assertIn((index, columns), index_data)
+
+    def _post_downgrade_009(self, engine):
+        table = "jobs"
+        index = "hard_timeout_idx"
+        columns = ["hard_timeout"]
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        index_data = [(idx.name, idx.columns.keys())
+                      for idx in new_table.indexes]
+
+        self.assertNotIn((index, columns), index_data)
 
     def _pre_upgrade_010(self, engine):
         initial_values = [
@@ -892,3 +922,50 @@ class TestMigrations(utils.BaseTestCase):
         new_table = sqlalchemy.Table(table, meta, autoload=True)
 
         self.assertTrue(len(new_table.foreign_keys), 1)
+
+    def _check_013(self, engine, data):
+        jobs = get_table(engine, 'jobs')
+
+        # So, this value comes back in a kid of odd format
+        self.assertEqual(u"'QUEUED'", jobs.c.status.server_default.arg.text)
+        self.assertFalse(jobs.c.status.nullable)
+
+    def _post_downgrade_013(self, engine):
+        jobs = get_table(engine, 'jobs')
+
+        self.assertEqual(None, jobs.c.status.server_default)
+        self.assertTrue(jobs.c.status.nullable)
+
+    def _check_014(self, engine, data):
+        table = "jobs"
+        index_status = "status_idx"
+        columns_status = ["status"]
+        index_timeout = "timeout_idx"
+        columns_timeout = ["timeout"]
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        index_data = [(idx.name, idx.columns.keys())
+                      for idx in new_table.indexes]
+
+        self.assertIn((index_status, columns_status), index_data)
+        self.assertIn((index_timeout, columns_timeout), index_data)
+
+    def _post_downgrade_014(self, engine):
+        table = "jobs"
+        index_status = "status_idx"
+        columns_status = ["status"]
+        index_timeout = "timeout_idx"
+        columns_timeout = ["timeout"]
+        meta = sqlalchemy.MetaData()
+        meta.bind = engine
+
+        new_table = sqlalchemy.Table(table, meta, autoload=True)
+
+        index_data = [(idx.name, idx.columns.keys())
+                      for idx in new_table.indexes]
+
+        self.assertNotIn((index_status, columns_status), index_data)
+        self.assertNotIn((index_timeout, columns_timeout), index_data)

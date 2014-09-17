@@ -143,7 +143,7 @@ class Job(BASE, ModelBase):
     schedule_id = Column(String(36))
     tenant = Column(String(255), nullable=False)
     worker_id = Column(String(36), nullable=True)
-    status = Column(String(255), nullable=True)
+    status = Column(String(255), default='QUEUED', nullable=False)
     action = Column(String(255), nullable=False)
     retry_count = Column(Integer, nullable=False, default=0)
     timeout = Column(DateTime, nullable=False)
