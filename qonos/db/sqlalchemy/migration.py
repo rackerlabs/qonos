@@ -27,7 +27,7 @@ import sqlalchemy
 
 from qonos.common import exception
 from qonos.db.sqlalchemy import api as db_api
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 
 LOG = logging.getLogger(__name__)

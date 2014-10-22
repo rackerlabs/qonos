@@ -17,7 +17,7 @@
 from migrate.changeset.constraint import ForeignKeyConstraint
 from sqlalchemy import MetaData, Table
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 
 

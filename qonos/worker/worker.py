@@ -22,7 +22,7 @@ import time
 from oslo.config import cfg
 
 from qonos.common import utils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import importutils
 import qonos.openstack.common.log as logging
 

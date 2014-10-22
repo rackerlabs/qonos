@@ -18,7 +18,7 @@
 from oslo.config import cfg
 
 from qonos.openstack.common import context as req_context
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import log as logging
 from qonos.openstack.common import rpc
 

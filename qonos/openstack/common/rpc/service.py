@@ -17,7 +17,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import log as logging
 from qonos.openstack.common import rpc
 from qonos.openstack.common.rpc import dispatcher as rpc_dispatcher

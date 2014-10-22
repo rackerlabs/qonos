@@ -24,7 +24,7 @@ import logging
 import sys
 import traceback
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 
 
 @contextlib.contextmanager

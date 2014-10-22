@@ -23,7 +23,7 @@ from operator import itemgetter
 from qonos.common import exception
 from qonos.common import timeutils
 import qonos.db.db_utils as db_utils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 
 
 DATA = {

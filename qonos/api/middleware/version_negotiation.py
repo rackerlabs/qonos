@@ -24,7 +24,7 @@ return.
 from oslo.config import cfg
 
 from qonos.api import versions
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 from qonos.openstack.common import wsgi
 

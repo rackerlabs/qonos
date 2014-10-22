@@ -23,7 +23,7 @@ import sys
 
 from qonos.common import timeutils
 import qonos.db.sqlalchemy.api
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.tests.functional.db import base
 from qonos.tests import utils
 
