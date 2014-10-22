@@ -14,7 +14,7 @@
 #    under the License.
 
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import log as logging
 from qonos.openstack.common.notifier import rpc_notifier
 

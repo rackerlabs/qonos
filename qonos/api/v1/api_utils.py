@@ -20,7 +20,7 @@ from qonos.api import api
 from qonos.common import exception
 from qonos.common import timeutils
 from qonos.common import utils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 
 CONF = api.CONF
 

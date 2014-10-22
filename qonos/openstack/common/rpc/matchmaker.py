@@ -25,7 +25,7 @@ import json
 import eventlet
 from oslo.config import cfg
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import log as logging
 
 

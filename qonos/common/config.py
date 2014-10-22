@@ -22,7 +22,7 @@ from oslo.config import cfg
 
 from paste import deploy
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 
 paste_deploy_opts = [
     cfg.StrOpt('flavor'),

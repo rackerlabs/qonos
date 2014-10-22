@@ -30,7 +30,7 @@ import kombu.entity
 import kombu.messaging
 from oslo.config import cfg
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import network_utils
 from qonos.openstack.common.rpc import amqp as rpc_amqp
 from qonos.openstack.common.rpc import common as rpc_common

@@ -37,7 +37,7 @@ from xml.dom import minidom
 from xml.parsers import expat
 
 from qonos.openstack.common import exception
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import jsonutils
 from qonos.openstack.common import log as logging
 from qonos.openstack.common import service

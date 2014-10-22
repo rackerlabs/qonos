@@ -16,7 +16,7 @@
 
 from sqlalchemy import MetaData, Table, Index
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 
 LOG = logging.getLogger(__name__)

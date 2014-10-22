@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 
 
 class QonosException(Exception):

@@ -40,7 +40,7 @@ from eventlet import semaphore
 from oslo.config import cfg
 
 from qonos.openstack.common import excutils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import local
 from qonos.openstack.common import log as logging
 from qonos.openstack.common.rpc import common as rpc_common
