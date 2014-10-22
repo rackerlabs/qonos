@@ -20,6 +20,11 @@ sqlalchemy-migrate>=0.7.2
 #Client only reqs
 docopt==0.6.1
 
+# Required by openstack.common libraries
+six>=1.7.0
+
+oslo.serialization>=1.0.0               # Apache-2.0
+
 # For snapshot worker to contact Nova
 httplib2
 python-novaclient
