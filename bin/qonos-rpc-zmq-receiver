@@ -32,9 +32,9 @@ if os.path.exists(os.path.join(POSSIBLE_TOPDIR, 'qonos', '__init__.py')):
 
 from oslo.config import cfg
 
+from qonos.common import rpc
+from qonos.common.rpc import impl_zmq
 from qonos.openstack.common import log as logging
-from qonos.openstack.common import rpc
-from qonos.openstack.common.rpc import impl_zmq
 
 CONF = cfg.CONF
 CONF.register_opts(rpc.rpc_opts)

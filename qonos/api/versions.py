@@ -18,7 +18,7 @@ import httplib
 import json
 import webob
 
-from qonos.openstack.common import wsgi
+from qonos.common import wsgi
 
 
 class Controller(object):

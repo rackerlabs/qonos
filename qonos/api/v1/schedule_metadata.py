@@ -18,8 +18,8 @@ import webob.exc
 
 import qonos.api.v1.api_utils as api_utils
 from qonos.common import exception
+from qonos.common import wsgi
 import qonos.db
-from qonos.openstack.common import wsgi
 
 
 class ScheduleMetadataController(object):

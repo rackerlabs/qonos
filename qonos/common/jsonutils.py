@@ -40,7 +40,7 @@ import itertools
 import json
 import xmlrpclib
 
-from qonos.openstack.common import timeutils
+from qonos.common import timeutils
 
 
 def to_primitive(value, convert_instances=False, convert_datetime=True,

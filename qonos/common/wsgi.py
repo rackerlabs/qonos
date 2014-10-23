@@ -36,13 +36,13 @@ import webob.exc
 from xml.dom import minidom
 from xml.parsers import expat
 
-from qonos.openstack.common import exception
+from qonos.common import exception
+from qonos.common import jsonutils
+from qonos.common import xmlutils
 from qonos.openstack.common.gettextutils import _
-from qonos.openstack.common import jsonutils
 from qonos.openstack.common import log as logging
 from qonos.openstack.common import service
 from qonos.openstack.common import sslutils
-from qonos.openstack.common import xmlutils
 
 socket_opts = [
     cfg.IntOpt('backlog',
@@ -435,7 +435,7 @@ class ActionDispatcher(object):
 
 
 class DictSerializer(ActionDispatcher):
-    """Default request body serialization"""
+    """Default request body serialization."""
 
     def serialize(self, data, action='default'):
         return self.dispatch(data, action=action)
@@ -445,7 +445,7 @@ class DictSerializer(ActionDispatcher):
 
 
 class JSONDictSerializer(DictSerializer):
-    """Default JSON request body serialization"""
+    """Default JSON request body serialization."""
 
     def default(self, data):
         def sanitizer(obj):
@@ -557,7 +557,7 @@ class XMLDictSerializer(DictSerializer):
 
 
 class ResponseHeadersSerializer(ActionDispatcher):
-    """Default response headers serialization"""
+    """Default response headers serialization."""
 
     def serialize(self, response, data, action):
         self.dispatch(response, data, action=action)
@@ -567,7 +567,7 @@ class ResponseHeadersSerializer(ActionDispatcher):
 
 
 class ResponseSerializer(object):
-    """Encode the necessary pieces into a response object"""
+    """Encode the necessary pieces into a response object."""
 
     def __init__(self, body_serializers=None, headers_serializer=None):
         self.body_serializers = {
@@ -608,7 +608,7 @@ class ResponseSerializer(object):
 
 
 class RequestHeadersDeserializer(ActionDispatcher):
-    """Default request headers deserializer"""
+    """Default request headers deserializer."""
 
     def deserialize(self, request, action):
         return self.dispatch(request, action=action)
@@ -709,7 +709,7 @@ class RequestDeserializer(object):
 
 
 class TextDeserializer(ActionDispatcher):
-    """Default request body deserialization"""
+    """Default request body deserialization."""
 
     def deserialize(self, datastring, action='default'):
         return self.dispatch(datastring, action=action)
@@ -774,20 +774,20 @@ class XMLDeserializer(TextDeserializer):
             return result
 
     def find_first_child_named(self, parent, name):
-        """Search a nodes children for the first child with a given name"""
+        """Search a nodes children for the first child with a given name."""
         for node in parent.childNodes:
             if node.nodeName == name:
                 return node
         return None
 
     def find_children_named(self, parent, name):
-        """Return all of a nodes children who have the given name"""
+        """Return all of a nodes children who have the given name."""
         for node in parent.childNodes:
             if node.nodeName == name:
                 yield node
 
     def extract_text(self, node):
-        """Get the text field contained by the given node"""
+        """Get the text field contained by the given node."""
         if len(node.childNodes) == 1:
             child = node.childNodes[0]
             if child.nodeType == child.TEXT_NODE:

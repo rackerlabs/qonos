@@ -17,9 +17,10 @@
 from oslo.config import cfg
 
 from qonos.common import utils
+import qonos.common.wsgi as wsgi
+
 from qonos.openstack.common.gettextutils import _
 import qonos.openstack.common.log as logging
-import qonos.openstack.common.wsgi as wsgi
 
 LOG = logging.getLogger(__name__)
 

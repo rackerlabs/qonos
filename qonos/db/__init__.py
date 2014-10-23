@@ -16,7 +16,8 @@
 
 from oslo.config import cfg
 
-from qonos.openstack.common import importutils
+from qonos.common import importutils
+
 
 sql_connection_opt = cfg.StrOpt('sql_connection',
                                 default='sqlite:///qonos.sqlite',

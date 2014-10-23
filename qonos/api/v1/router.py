@@ -21,7 +21,7 @@ from qonos.api.v1 import jobs
 from qonos.api.v1 import schedule_metadata
 from qonos.api.v1 import schedules
 from qonos.api.v1 import workers
-from qonos.openstack.common import wsgi
+from qonos.common import wsgi
 
 
 class API(wsgi.Router):

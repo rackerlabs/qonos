@@ -22,8 +22,8 @@ from oslo.config import cfg
 
 from qonos.common import config
 from qonos.common import timeutils
+from qonos.common import wsgi
 import qonos.db
-from qonos.openstack.common import wsgi
 from qonos.qonosclient import client
 from qonos.qonosclient import exception as client_exc
 from qonos.tests import utils as utils

@@ -13,23 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
-
-from qonos.openstack.common import jsonutils
-from qonos.openstack.common import log as logging
-
-
-CONF = cfg.CONF
-
 
 def notify(_context, message):
-    """Notifies the recipient of the desired event given the model.
-    Log notifications using openstack's default logging system"""
-
-    priority = message.get('priority',
-                           CONF.default_notification_level)
-    priority = priority.lower()
-    logger = logging.getLogger(
-        'qonos.openstack.common.notification.%s' %
-        message['event_type'])
-    getattr(logger, priority)(jsonutils.dumps(message))
+    """Notifies the recipient of the desired event given the model."""
+    pass

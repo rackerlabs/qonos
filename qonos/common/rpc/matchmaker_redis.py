@@ -20,9 +20,10 @@ return keys for direct exchanges, per (approximate) AMQP parlance.
 
 from oslo.config import cfg
 
-from qonos.openstack.common import importutils
+from qonos.common import importutils
+from qonos.common.rpc import matchmaker as mm_common
 from qonos.openstack.common import log as logging
-from qonos.openstack.common.rpc import matchmaker as mm_common
+
 
 redis = importutils.try_import('redis')
 

@@ -17,9 +17,9 @@
 import datetime
 import logging as pylog
 
+from qonos.common.notifier import api as notifier_api
 from qonos.common import timeutils
 from qonos.common import utils
-from qonos.openstack.common.notifier import api as notifier_api
 from qonos.tests import utils as test_utils
 
 

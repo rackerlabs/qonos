@@ -17,12 +17,13 @@ import uuid
 
 from oslo.config import cfg
 
+from qonos.common import importutils
+from qonos.common import jsonutils
+from qonos.common import timeutils
+
 from qonos.openstack.common import context
 from qonos.openstack.common.gettextutils import _
-from qonos.openstack.common import importutils
-from qonos.openstack.common import jsonutils
 from qonos.openstack.common import log as logging
-from qonos.openstack.common import timeutils
 
 
 LOG = logging.getLogger(__name__)
@@ -57,7 +58,7 @@ class BadPriorityException(Exception):
 
 
 def notify_decorator(name, fn):
-    """ decorator for notify which is used from utils.monkey_patch()
+    """Decorator for notify which is used from utils.monkey_patch()
 
         :param name: name of the function
         :param function: - object of the function

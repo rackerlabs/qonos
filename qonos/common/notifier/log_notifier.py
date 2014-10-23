@@ -1,4 +1,4 @@
-# Copyright 2012 Red Hat, Inc.
+# Copyright 2011 OpenStack Foundation.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,17 +13,23 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.config import cfg
 
-from qonos.openstack.common.gettextutils import _
+from qonos.common import jsonutils
 from qonos.openstack.common import log as logging
-from qonos.openstack.common.notifier import rpc_notifier
-
-LOG = logging.getLogger(__name__)
 
 
-def notify(context, message):
-    """Deprecated in Grizzly. Please use rpc_notifier instead."""
+CONF = cfg.CONF
 
-    LOG.deprecated(_("The rabbit_notifier is now deprecated."
-                     " Please use rpc_notifier instead."))
-    rpc_notifier.notify(context, message)
+
+def notify(_context, message):
+    """Notifies the recipient of the desired event given the model.
+    Log notifications using openstack's default logging system"""
+
+    priority = message.get('priority',
+                           CONF.default_notification_level)
+    priority = priority.lower()
+    logger = logging.getLogger(
+        'qonos.openstack.common.notification.%s' %
+        message['event_type'])
+    getattr(logger, priority)(jsonutils.dumps(message))

@@ -34,16 +34,16 @@ from eventlet import greenpool
 from eventlet import pools
 from eventlet import queue
 from eventlet import semaphore
+
 # TODO(pekowsk): Remove import cfg and below comment in Havana.
 # This import should no longer be needed when the amqp_rpc_single_reply_queue
 # option is removed.
 from oslo.config import cfg
+from qonos.common import excutils
 
-from qonos.openstack.common import excutils
 from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import local
 from qonos.openstack.common import log as logging
-from qonos.openstack.common.rpc import common as rpc_common
 
 
 # TODO(pekowski): Remove this option in Havana.
@@ -114,7 +114,7 @@ class ConnectionContext(rpc_common.Connection):
     """
 
     def __init__(self, conf, connection_pool, pooled=True, server_params=None):
-        """Create a new connection, or get one from the pool"""
+        """Create a new connection, or get one from the pool."""
         self.connection = None
         self.conf = conf
         self.connection_pool = connection_pool
@@ -127,7 +127,7 @@ class ConnectionContext(rpc_common.Connection):
         self.pooled = pooled
 
     def __enter__(self):
-        """When with ConnectionContext() is used, return self"""
+        """When with ConnectionContext() is used, return self."""
         return self
 
     def _done(self):
@@ -175,7 +175,7 @@ class ConnectionContext(rpc_common.Connection):
         self.connection.consume_in_thread()
 
     def __getattr__(self, key):
-        """Proxy all other calls to the Connection instance"""
+        """Proxy all other calls to the Connection instance."""
         if self.connection:
             return getattr(self.connection, key)
         else:
@@ -183,7 +183,7 @@ class ConnectionContext(rpc_common.Connection):
 
 
 class ReplyProxy(ConnectionContext):
-    """ Connection class for RPC replies / callbacks """
+    """Connection class for RPC replies / callbacks."""
     def __init__(self, conf, connection_pool):
         self._call_waiters = {}
         self._num_call_waiters = 0
@@ -197,8 +197,11 @@ class ReplyProxy(ConnectionContext):
         msg_id = message_data.pop('_msg_id', None)
         waiter = self._call_waiters.get(msg_id)
         if not waiter:
-            LOG.warn(_('no calling threads waiting for msg_id : %s'
-                       ', message : %s') % (msg_id, message_data))
+            LOG.warn(_('no calling threads waiting for msg_id : %(msg_id)s'
+                       ', message : %(msg)s') %
+                     {
+                         'msg_id': msg_id,
+                         'msg': message_data})
         else:
             waiter.put(message_data)
 
@@ -251,7 +254,7 @@ def msg_reply(conf, msg_id, reply_q, connection_pool, reply=None,
 
 
 class RpcContext(rpc_common.CommonRpcContext):
-    """Context that supports replying to a rpc.call"""
+    """Context that supports replying to a rpc.call."""
     def __init__(self, **kwargs):
         self.msg_id = kwargs.pop('msg_id', None)
         self.reply_q = kwargs.pop('reply_q', None)
@@ -487,7 +490,7 @@ class MulticallProxyWaiter(object):
         return result
 
     def __iter__(self):
-        """Return a result until we get a reply with an 'ending" flag"""
+        """Return a result until we get a reply with an 'ending" flag."""
         if self._done:
             raise StopIteration
         while True:
@@ -543,7 +546,7 @@ class MulticallWaiter(object):
             self._result = data['result']
 
     def __iter__(self):
-        """Return a result until we get a 'None' response from consumer"""
+        """Return a result until we get a 'None' response from consumer."""
         if self._done:
             raise StopIteration
         while True:
@@ -563,7 +566,7 @@ class MulticallWaiter(object):
 
 
 def create_connection(conf, new, connection_pool):
-    """Create a connection"""
+    """Create a connection."""
     return ConnectionContext(conf, connection_pool, pooled=not new)
 
 

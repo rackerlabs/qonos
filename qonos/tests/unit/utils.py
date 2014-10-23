@@ -13,8 +13,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
-from qonos.openstack.common import wsgi
+from qonos.common import wsgi
 
 SERVER_UUID1 = 'ba3f1c5d-89a0-34c1-b44d-ef78d46b90a3'
 

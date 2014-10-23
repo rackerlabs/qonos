@@ -16,11 +16,10 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+from qonos.common import rpc
 
 from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import log as logging
-from qonos.openstack.common import rpc
-from qonos.openstack.common.rpc import dispatcher as rpc_dispatcher
 from qonos.openstack.common import service
 
 

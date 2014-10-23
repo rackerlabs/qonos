@@ -19,14 +19,15 @@ import datetime
 import logging as pylog
 import sys
 
-from croniter.croniter import croniter
 from oslo.config import cfg
 
+from croniter.croniter import croniter
 from qonos.common import exception as exc
+from qonos.common.notifier import api as notifier_api
 from qonos.common import timeutils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
-from qonos.openstack.common.notifier import api as notifier_api
+
 
 LOG = logging.getLogger(__name__)
 

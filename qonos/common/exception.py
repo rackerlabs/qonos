@@ -55,8 +55,16 @@ class PollingException(QonosException):
 
 class OutOfTimeException(QonosException):
     message = _('Timeout occurred while trying to process job %(job)s in '
-                'status %(status)s')
+                'status %(status)s.')
 
 
 class DatabaseMigrationError(QonosException):
     message = _("There was an error migrating the database.")
+
+
+class InvalidContentType(QonosException):
+    message = _("Invalid content type %(content_type)s.")
+
+
+class MalformedRequestBody(QonosException):
+    message = "Malformed message body: %(reason)s"

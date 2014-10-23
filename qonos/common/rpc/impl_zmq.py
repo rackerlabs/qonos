@@ -14,6 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+import greenlet
 import os
 import pprint
 import re
@@ -22,16 +24,14 @@ import sys
 import types
 import uuid
 
-import eventlet
-import greenlet
 from oslo.config import cfg
 
-from qonos.openstack.common import excutils
-from qonos.openstack.common.gettextutils import _
-from qonos.openstack.common import importutils
-from qonos.openstack.common import jsonutils
-from qonos.openstack.common import processutils as utils
-from qonos.openstack.common.rpc import common as rpc_common
+from qonos.common import excutils
+from qonos.common import importutils
+from qonos.common import jsonutils
+from qonos.common.rpc import common as rpc_common
+from qonos.openstack.common._i18n import _
+
 
 zmq = importutils.try_import('eventlet.green.zmq')
 
@@ -513,7 +513,7 @@ class ZmqProxy(ZmqBaseReactor):
                         "%(topic)s. Dropping message.") % {'topic': topic})
 
     def consume_in_thread(self):
-        """Runs the ZmqProxy service"""
+        """Runs the ZmqProxy service."""
         ipc_dir = CONF.rpc_zmq_ipc_dir
         consume_in = "tcp://%s:%s" % \
             (CONF.rpc_zmq_bind_address,

@@ -20,9 +20,7 @@ A helper class for proxy objects to remote APIs.
 For more information about rpc API version numbers, see:
     rpc/dispatcher.py
 """
-
-
-from qonos.openstack.common import rpc
+from qonos.common import rpc
 
 
 class RpcProxy(object):

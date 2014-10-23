@@ -13,14 +13,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-'''messaging based notification driver, with message envelopes'''
+"""Messaging based notification driver, with message envelopes."""
 
 from oslo.config import cfg
 
+from qonos.common import rpc
 from qonos.openstack.common import context as req_context
 from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import log as logging
-from qonos.openstack.common import rpc
+
 
 LOG = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ CONF.register_opt(notification_topic_opt, opt_group)
 
 
 def notify(context, message):
-    """Sends a notification via RPC"""
+    """Sends a notification via RPC."""
     if not context:
         context = req_context.get_admin_context()
     priority = message.get('priority',

@@ -15,10 +15,11 @@
 
 from oslo.config import cfg
 
+from qonos.common import rpc
 from qonos.openstack.common import context as req_context
 from qonos.openstack.common.gettextutils import _
 from qonos.openstack.common import log as logging
-from qonos.openstack.common import rpc
+
 
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ CONF.register_opt(notification_topic_opt)
 
 
 def notify(context, message):
-    """Sends a notification via RPC"""
+    """Sends a notification via RPC."""
     if not context:
         context = req_context.get_admin_context()
     priority = message.get('priority',
