@@ -32,8 +32,6 @@ class FaultWrapper(wsgi.Middleware):
     def _error(self, inner, req):
         LOG.exception(_("Caught error: %s"), unicode(inner))
 
-        safe = getattr(inner, 'safe', False)
-        headers = getattr(inner, 'headers', None)
         status = getattr(inner, 'code', 500)
         if status is None:
             status = 500

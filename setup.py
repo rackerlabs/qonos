@@ -28,9 +28,9 @@ setuptools.setup(
     description='The QonoS project provides services for scheduling '
                 'regularly occuring tasks.',
     license='Apache License (2.0)',
-    #author='OpenStack',
-    #author_email='openstack@lists.launchpad.net',
-    #url='http://qonos.openstack.org/',
+    # author='OpenStack',
+    # author_email='openstack@lists.launchpad.net',
+    # url='http://qonos.openstack.org/',
     packages=setuptools.find_packages(exclude=['bin']),
     test_suite='nose.collector',
     cmdclass=setup.get_cmdclass(),

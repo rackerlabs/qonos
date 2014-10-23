@@ -220,12 +220,12 @@ class TestApi(utils.BaseTestCase):
         self.assertEqual(schedule['minute'], 30)
         self.assertEqual(schedule['hour'], 12)
 
-        #list schedules
+        # list schedules
         schedules = self.client.list_schedules()
         self.assertEqual(len(schedules), 1)
         self.assertEqual(schedules[0], schedule)
 
-        #list schedules, next_run filters
+        # list schedules, next_run filters
         filters = {}
         filters['next_run_after'] = schedule['next_run']
         filters['next_run_before'] = schedule['next_run']
@@ -240,21 +240,21 @@ class TestApi(utils.BaseTestCase):
         schedules = self.client.list_schedules(filter_args=filters)
         self.assertEqual(len(schedules), 0)
 
-        #list schedules, next_run_before filters
+        # list schedules, next_run_before filters
         filters = {}
         filters['next_run_before'] = schedule['next_run']
         schedules = self.client.list_schedules(filter_args=filters)
         self.assertEqual(len(schedules), 1)
         self.assertEqual(schedules[0], schedule)
 
-        #list schedules, next_run_after filters
+        # list schedules, next_run_after filters
         filters = {}
         filters['next_run_after'] = schedule['next_run']
         schedules = self.client.list_schedules(filter_args=filters)
         self.assertEqual(len(schedules), 1)
         self.assertEqual(schedules[0], schedule)
 
-        #list schedules, tenant filters
+        # list schedules, tenant filters
         filters = {}
         filters['tenant'] = TENANT1
         schedules = self.client.list_schedules(filter_args=filters)
@@ -264,7 +264,7 @@ class TestApi(utils.BaseTestCase):
         schedules = self.client.list_schedules(filter_args=filters)
         self.assertEqual(len(schedules), 0)
 
-        #list schedules, metadata filter
+        # list schedules, metadata filter
         filter = {}
         filter['instance_id'] = 'my_instance_1'
         schedules = self.client.list_schedules(filter_args=filter)
@@ -289,7 +289,7 @@ class TestApi(utils.BaseTestCase):
         schedules = self.client.list_schedules(filter_args=filter)
         self.assertEqual(len(schedules), 0)
 
-        #update schedule
+        # update schedule
         request = {'schedule': {'hour': 14}}
         updated_schedule = self.client.update_schedule(schedule['id'], request)
         self.assertEqual(updated_schedule['id'], schedule['id'])
@@ -303,14 +303,10 @@ class TestApi(utils.BaseTestCase):
         self.assertNotEqual(updated_schedule['hour'], schedule['hour'])
         self.assertNotEqual(updated_schedule['next_run'], schedule['next_run'])
 
-        #update schedule metadata
-        request = {'schedule': {
-                'metadata': {
-                    'instance_id': 'my_instance_2',
-                    'retention': '3',
-                }
-            }
-        }
+        # update schedule metadata
+        request = {'schedule': {'metadata': {'instance_id': 'my_instance_2',
+                                             'retention': '3',
+                                             }}}
         schedule = self.client.get_schedule(schedule['id'])
         updated_schedule = self.client.update_schedule(schedule['id'], request)
         self.assertEqual(updated_schedule['id'], schedule['id'])
@@ -352,42 +348,42 @@ class TestApi(utils.BaseTestCase):
 
         metadata_fixture = {'key1': 'value1'}
 
-        #update schedule metadata
+        # update schedule metadata
         updated_value = self.client.update_schedule_metadata(schedule['id'],
                                                              metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list schedule metadata
+        # list schedule metadata
         updated_value = self.client.list_schedule_metadata(schedule['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #update schedule metadata value
+        # update schedule metadata value
         metadata_fixture = {'key1': 'value2'}
         updated_value = self.client.update_schedule_metadata(schedule['id'],
                                                              metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list schedule metadata
+        # list schedule metadata
         updated_value = self.client.list_schedule_metadata(schedule['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #add schedule metadata
+        # add schedule metadata
         metadata_fixture = {'key1': 'value2', 'key2': 'value2'}
         updated_value = self.client.update_schedule_metadata(schedule['id'],
                                                              metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list schedule metadata
+        # list schedule metadata
         updated_value = self.client.list_schedule_metadata(schedule['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #remove schedule metadata item
+        # remove schedule metadata item
         metadata_fixture = {'key2': 'value2'}
         updated_value = self.client.update_schedule_metadata(schedule['id'],
                                                              metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list schedule metadata
+        # list schedule metadata
         updated_value = self.client.list_schedule_metadata(schedule['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
@@ -577,42 +573,42 @@ class TestApi(utils.BaseTestCase):
 
         metadata_fixture = {'key1': 'value1'}
 
-        #update job metadata
+        # update job metadata
         updated_value = self.client.update_job_metadata(job['id'],
                                                         metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list job metadata
+        # list job metadata
         updated_value = self.client.list_job_metadata(job['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #update job metadata value
+        # update job metadata value
         metadata_fixture = {'key1': 'value2'}
         updated_value = self.client.update_job_metadata(job['id'],
-                                                             metadata_fixture)
+                                                        metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list job metadata
+        # list job metadata
         updated_value = self.client.list_job_metadata(job['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #add job metadata
+        # add job metadata
         metadata_fixture = {'key1': 'value2', 'key2': 'value2'}
         updated_value = self.client.update_job_metadata(job['id'],
-                                                             metadata_fixture)
+                                                        metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list job metadata
+        # list job metadata
         updated_value = self.client.list_job_metadata(job['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
-        #remove job metadata item
+        # remove job metadata item
         metadata_fixture = {'key2': 'value2'}
         updated_value = self.client.update_job_metadata(job['id'],
-                                                             metadata_fixture)
+                                                        metadata_fixture)
         self.assertEqual(updated_value, metadata_fixture)
 
-        #list job metadata
+        # list job metadata
         updated_value = self.client.list_job_metadata(job['id'])
         self.assertEqual(updated_value, metadata_fixture)
 
@@ -657,14 +653,14 @@ class TestApi(utils.BaseTestCase):
         jobs = [job_1, job_2, job_3, job_4]
         jobs = sorted(jobs, key=itemgetter('id'))
 
-        #list schedules
+        # list schedules
         response = self.client.list_schedules()
         self.assertEqual(len(response), 4)
         response_ids = set(r['id'] for r in response)
         schedule_ids = set(s['id'] for s in schedules)
         self.assertEqual(response_ids, schedule_ids)
 
-        #list schedules with limit
+        # list schedules with limit
         filter_args = {'limit': '2'}
         response = self.client.list_schedules(filter_args=filter_args)
         self.assertEqual(len(response), 2)
@@ -672,7 +668,7 @@ class TestApi(utils.BaseTestCase):
         schedule_ids = set(s['id'] for s in schedules[0:2])
         self.assertEqual(response_ids, schedule_ids)
 
-        #list schedules with marker
+        # list schedules with marker
         filter_args = {'marker': schedules[0]['id']}
         response = self.client.list_schedules(filter_args=filter_args)
         self.assertEqual(len(response), 3)
@@ -680,7 +676,7 @@ class TestApi(utils.BaseTestCase):
         schedule_ids = set(s['id'] for s in schedules[1:4])
         self.assertEqual(response_ids, schedule_ids)
 
-        #list schedules with limit and marker
+        # list schedules with limit and marker
         filter_args = {'limit': '2', 'marker': schedules[0]['id']}
         response = self.client.list_schedules(filter_args=filter_args)
         self.assertEqual(len(response), 2)

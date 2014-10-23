@@ -136,8 +136,8 @@ def schedule_get_all(filter_args={}):
                         if not(schedule_metadata['key'] == filter_key and
                                schedule_metadata['value'] == filter_value):
                             try:
-                                schedule_mutated = (
-                                        schedules_mutate.index(schedule))
+                                schedule_mutated = \
+                                    schedules_mutate.index(schedule)
                                 del schedules_mutate[schedule_mutated]
                             except Exception:
                                 pass
@@ -353,7 +353,7 @@ def job_create(job_values):
         metadata = values['job_metadata']
         del values['job_metadata']
 
-    if not 'retry_count' in values:
+    if 'retry_count' not in values:
         values['retry_count'] = 0
     job['worker_id'] = None
     job['version_id'] = str(uuid.uuid4())
@@ -490,7 +490,7 @@ def job_update(job_id, job_values):
 
     if len(values) > 0:
         job = DATA['jobs'][job_id]
-        #NOTE(ameade): This must come before update specified values since
+        # NOTE(ameade): This must come before update specified values since
         # we may be trying to manually set updated_at
         job['updated_at'] = timeutils.utcnow()
         job['version_id'] = str(uuid.uuid4())
@@ -534,7 +534,7 @@ def job_meta_create(job_id, values):
 
 
 def _check_job_exists(job_id):
-    if not job_id in DATA['jobs']:
+    if job_id not in DATA['jobs']:
         msg = _('Job %s could not be found') % job_id
         raise exception.NotFound(message=msg)
 

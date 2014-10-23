@@ -127,8 +127,7 @@ class TestSchedulesApi(test_utils.BaseTestCase):
 
     def test_list_next_run_filtered_before_less_than_after(self):
         after = self.schedule_3['next_run']
-        before = timeutils.isotime(after
-                        - datetime.timedelta(seconds=1))
+        before = timeutils.isotime(after - datetime.timedelta(seconds=1))
         path = '?next_run_after=%s&next_run_before=%s'
         path = path % (after, before)
         request = unit_utils.get_fake_request(path=path, method='GET')
@@ -283,19 +282,16 @@ class TestSchedulesApi(test_utils.BaseTestCase):
 
     def test_create_no_body_bad_request(self):
         request = unit_utils.get_fake_request(method='POST')
-        schedule_id = str(uuid.uuid4())
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           request, None)
 
     def test_create_malformed_body_bad_request(self):
         request = unit_utils.get_fake_request(method='POST')
-        schedule_id = str(uuid.uuid4())
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           request, 'fake-body')
 
     def test_create_no_schedule_bad_request(self):
         request = unit_utils.get_fake_request(method='POST')
-        schedule_id = str(uuid.uuid4())
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.create,
                           request, {'minute': '5'})
 
@@ -367,15 +363,15 @@ class TestSchedulesApi(test_utils.BaseTestCase):
                        fake_schedule_to_next_run)
 
         request = unit_utils.get_fake_request(method='PUT')
-        update_fixture = {'schedule': {
-                            'minute': '55',
-                            'hour': '5',
-                            'day': '2',
-                            'day_of_week': '4',
-                            'day_of_month': '23',
-                            'action': 'new-action',
-                            'tenant': 'new-tenant',
-                         }}
+        update_fixture = {'schedule':
+                          {'minute': '55',
+                           'hour': '5',
+                           'day': '2',
+                           'day_of_week': '4',
+                           'day_of_month': '23',
+                           'action': 'new-action',
+                           'tenant': 'new-tenant',
+                           }}
 
         updated = self.controller.update(request, self.schedule_1['id'],
                                          update_fixture)['schedule']
@@ -400,7 +396,7 @@ class TestSchedulesApi(test_utils.BaseTestCase):
         request = unit_utils.get_fake_request(method='PUT')
         update_fixture = {'schedule': {
                           'next_run': '12345'
-                         }}
+                          }}
 
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
                           request, self.schedule_1['id'], update_fixture)
@@ -410,7 +406,7 @@ class TestSchedulesApi(test_utils.BaseTestCase):
         expected_next_run = '1989-01-19T12:00:00Z'
         update_fixture = {'schedule': {
                           'next_run': expected_next_run
-                         }}
+                          }}
 
         updated = self.controller.update(request, self.schedule_1['id'],
                                          update_fixture)['schedule']

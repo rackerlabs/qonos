@@ -115,13 +115,12 @@ class TestUtils(test_utils.BaseTestCase):
         self.assertEqual(notification, {})
         self.config(host='localhost')
         utils.generate_notification(None, 'qonos.fake.event', payload)
-        expected_notification = {
-                                    'context': None,
-                                    'publisher_id': 'qonos.localhost',
-                                    'event_type': 'qonos.fake.event',
-                                    'priority': 'INFO',
-                                    'payload': {'id': 'fake-id'}
-                                }
+        expected_notification = {'context': None,
+                                 'publisher_id': 'qonos.localhost',
+                                 'event_type': 'qonos.fake.event',
+                                 'priority': 'INFO',
+                                 'payload': {'id': 'fake-id'}
+                                 }
 
         self.assertEqual(notification, expected_notification)
 

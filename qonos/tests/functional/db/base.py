@@ -34,7 +34,7 @@ TENANT_2 = uuid.uuid4()
 CONF = cfg.CONF
 
 
-#NOTE(ameade): This is set in each individual db test module
+# NOTE(ameade): This is set in each individual db test module
 db_api = None
 
 
@@ -66,7 +66,7 @@ class TestSchedulesDBApi(test_utils.BaseTestCase):
         super(TestSchedulesDBApi, self).setUp()
         self.db_api = db_api
         timeutils.set_time_override(datetime.datetime(
-                year=2013, month=1, day=1, hour=9, minute=0))
+            year=2013, month=1, day=1, hour=9, minute=0))
         self._create_schedules()
 
     def tearDown(self):
@@ -364,7 +364,7 @@ class TestSchedulesDBApi(test_utils.BaseTestCase):
         new_next_run = timeutils.utcnow()
         schedule = self.db_api.schedule_create(fixture)
         self.db_api.schedule_test_and_set_next_run(
-                            schedule['id'], None, new_next_run)
+            schedule['id'], None, new_next_run)
 
         updated_schedule = self.db_api.schedule_get_by_id(schedule['id'])
         self.assertEqual(updated_schedule['next_run'], new_next_run)
@@ -380,7 +380,7 @@ class TestSchedulesDBApi(test_utils.BaseTestCase):
         new_next_run = timeutils.utcnow()
         schedule = self.db_api.schedule_create(fixture)
         self.db_api.schedule_test_and_set_next_run(
-                        schedule['id'], schedule.get('next_run'), new_next_run)
+            schedule['id'], schedule.get('next_run'), new_next_run)
 
         updated_schedule = self.db_api.schedule_get_by_id(schedule['id'])
         self.assertEqual(updated_schedule['next_run'], new_next_run)
@@ -448,7 +448,7 @@ class TestSchedulesDBApi(test_utils.BaseTestCase):
     def test_metadata_create_duplicate(self):
         schedule = self._create_basic_schedule()
         fixture = {'key': 'key1', 'value': 'value1'}
-        meta = db_api.schedule_meta_create(schedule['id'], fixture)
+        db_api.schedule_meta_create(schedule['id'], fixture)
         fixture = {'key': 'key1', 'value': 'value1'}
 
         self.assertRaises(exception.Duplicate, db_api.schedule_meta_create,
@@ -578,10 +578,10 @@ class TestWorkersDBApi(test_utils.BaseTestCase):
     def _create_workers(self):
         fixture_1 = {'host': 'foo',
                      'id': unit_utils.WORKER_UUID1,
-                    }
+                     }
         fixture_2 = {'host': 'bar',
                      'id': unit_utils.WORKER_UUID2,
-                    }
+                     }
         self.worker_1 = self.db_api.worker_create(fixture_1)
         self.worker_2 = self.db_api.worker_create(fixture_2)
 
@@ -693,12 +693,11 @@ class TestJobsDBApi(test_utils.BaseTestCase):
         now = timeutils.utcnow()
         timeout = now + datetime.timedelta(hours=1)
         hard_timeout = now + datetime.timedelta(hours=4)
-        return db_api.job_create({
-                'action': 'snapshot',
-                'timeout': timeout,
-                'hard_timeout': hard_timeout,
-                'tenant': unit_utils.TENANT1
-                })
+        return db_api.job_create({'action': 'snapshot',
+                                  'timeout': timeout,
+                                  'hard_timeout': hard_timeout,
+                                  'tenant': unit_utils.TENANT1
+                                  })
 
     def test_job_create_no_action(self):
         fixture = {
@@ -1116,7 +1115,7 @@ class TestJobsDBApi(test_utils.BaseTestCase):
     def test_metadata_create_duplicate(self):
         job = self._create_basic_job()
         fixture = {'key': 'key1', 'value': 'value1'}
-        meta = db_api.job_meta_create(job['id'], fixture)
+        db_api.job_meta_create(job['id'], fixture)
         fixture = {'key': 'key1', 'value': 'value1'}
 
         self.assertRaises(exception.Duplicate, db_api.job_meta_create,
@@ -1125,9 +1124,9 @@ class TestJobsDBApi(test_utils.BaseTestCase):
     def test_metadata_get_all_by_job_id(self):
         job = self._create_basic_job()
         fixture = {'key': 'key1', 'value': 'value1'}
-        meta = db_api.job_meta_create(job['id'], fixture)
+        db_api.job_meta_create(job['id'], fixture)
         fixture = {'key': 'key2', 'value': 'value2'}
-        meta = db_api.job_meta_create(job['id'], fixture)
+        db_api.job_meta_create(job['id'], fixture)
         meta_list = db_api.job_meta_get_all_by_job_id(job['id'])
         self.assertEqual(len(meta_list), 2)
 
@@ -1164,7 +1163,7 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
         tmp = timeutils.parse_isotime('2014-09-05 20:05:56.629128'). \
             replace(tzinfo=None)
         timeutils.set_time_override(tmp)
-        #timeutils.set_time_override()
+        # timeutils.set_time_override()
         self._create_job_fixtures()
 
     def tearDown(self):
@@ -1305,13 +1304,12 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
         }
 
         self._create_jobs(10, job_fixture)
-        job = db_api.job_get_and_assign_next_by_action('snapshot',
-                                                       unit_utils.WORKER_UUID1,
-                                                       new_timeout)
+        db_api.job_get_and_assign_next_by_action('snapshot',
+                                                 unit_utils.WORKER_UUID1,
+                                                 new_timeout)
 
-        job2 = db_api.job_get_and_assign_next_by_action('snapshot',
-                                                       unit_utils.WORKER_UUID1,
-                                                       new_timeout)
+        job2 = db_api.job_get_and_assign_next_by_action(
+            'snapshot', unit_utils.WORKER_UUID1, new_timeout)
         self.assertEqual(job2, None)
 
     def test_get_next_job_skip_done(self):
@@ -1361,18 +1359,18 @@ class TestJobsDBGetNextJobApi(test_utils.BaseTestCase):
     def test_get_next_job_timed_out(self):
         now = timeutils.utcnow()
         new_timeout = now + datetime.timedelta(hours=3)
-        #Job 1 based on fixture 2 times out in 5 seconds
+        # Job 1 based on fixture 2 times out in 5 seconds
         self.job_fixture_2['timeout'] = now + datetime.timedelta(seconds=5)
         self.job_fixture_2['worker_id'] = unit_utils.WORKER_UUID2
         self.job_fixture_2['status'] = 'ERROR'
-        #Job 2 based on fixture 1 times out in 125 seconds
+        # Job 2 based on fixture 1 times out in 125 seconds
         self.job_fixture_1['timeout'] = now + datetime.timedelta(seconds=125)
         self.job_fixture_1['worker_id'] = unit_utils.WORKER_UUID2
         self.job_fixture_2['status'] = 'ERROR'
-        #Time is advanced by 20 seconds after this call
+        # Time is advanced by 20 seconds after this call
         self._create_jobs(10, self.job_fixture_2, self.job_fixture_1)
-        #Ensures that timeout test time is on the minute between the two
-        #job timeouts defined above
+        # Ensures that timeout test time is on the minute between the two
+        # job timeouts defined above
         timeutils.set_time_override(now + datetime.timedelta(65))
         now = timeutils.utcnow()
         print("2. now: %s" % str(now))

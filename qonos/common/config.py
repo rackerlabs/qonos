@@ -34,10 +34,10 @@ common_opts = [
                help=_('Python module path of database access API')),
     cfg.IntOpt('limit_param_default', default=100,
                help=_('Default value for the number of items returned by a '
-               'request if not specified explicitly in the request')),
+                      'request if not specified explicitly in the request')),
     cfg.IntOpt('api_limit_max', default=1000,
                help=_('Maximum permissible number of items that could be '
-               'returned by a request')),
+                      'returned by a request')),
 ]
 
 CONF = cfg.CONF

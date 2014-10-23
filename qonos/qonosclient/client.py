@@ -91,7 +91,7 @@ class Client(object):
             elif isinstance(v, dict):
                 self._serialize_datetimes(v)
 
-    ######## workers
+    # Workers
 
     def list_workers(self, params={}):
         path = '/v1/workers%s'
@@ -117,7 +117,7 @@ class Client(object):
         return self._do_request('POST', '/v1/workers/%s/jobs' % worker_id,
                                 body)
 
-    ######## schedules
+    # Schedules
 
     def list_schedules(self, filter_args={}):
         path = '/v1/schedules%s'
@@ -142,7 +142,7 @@ class Client(object):
     def delete_schedule(self, schedule_id):
         self._do_request('DELETE', '/v1/schedules/%s' % schedule_id)
 
-    ######## schedule metadata
+    # Schedule metadata
 
     def list_schedule_metadata(self, schedule_id):
         path = '/v1/schedules/%s/metadata' % schedule_id
@@ -153,7 +153,7 @@ class Client(object):
         path = '/v1/schedules/%s/metadata' % schedule_id
         return self._do_request('PUT', path, meta)['metadata']
 
-    ######## jobs
+    # Jobs
 
     def list_jobs(self, params={}):
         path = '/v1/jobs%s'

@@ -107,7 +107,7 @@ def version_control(version=None):
     """
     try:
         return _version_control(version)
-    except versioning_exceptions.DatabaseAlreadyControlledError as e:
+    except versioning_exceptions.DatabaseAlreadyControlledError:
         msg = (_("database is already under migration control"))
         raise exception.DatabaseMigrationError(msg)
 

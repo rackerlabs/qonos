@@ -78,7 +78,7 @@ class WorkersController(object):
         try:
             # Check that worker exists
             self.db_api.worker_get_by_id(worker_id)
-        except exception.NotFound as e:
+        except exception.NotFound:
             msg = _('Worker %s could not be found.') % worker_id
             raise webob.exc.HTTPNotFound(explanation=msg)
 

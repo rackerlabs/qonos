@@ -52,7 +52,7 @@ def upgrade(migrate_engine):
     jobs_table = get_jobs_table(meta)
 
     conn = migrate_engine.connect()
-    conn.execute(jobs_table.update(jobs_table.c.version_id == None,
+    conn.execute(jobs_table.update(jobs_table.c.version_id.is_(None),
                                    {jobs_table.c.version_id: jobs_table.c.id}))
 
 

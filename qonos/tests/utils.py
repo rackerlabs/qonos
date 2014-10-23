@@ -30,7 +30,7 @@ class BaseTestCase(unittest2.TestCase):
 
     def setUp(self):
         super(BaseTestCase, self).setUp()
-        #NOTE(ameade): we need config options to be registered
+        # NOTE(ameade): we need config options to be registered
         config.parse_args(args=[])
         self.stubs = stubout.StubOutForTesting()
 

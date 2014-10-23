@@ -312,7 +312,7 @@ class SnapshotProcessor(worker.JobProcessor):
         prefix = self._get_image_prefix(schedule)
         now = str(calendar.timegm(self._get_utcnow().utctimetuple()))
 
-        #NOTE(ameade): Truncate the server name so the image name is within
+        # NOTE(ameade): Truncate the server name so the image name is within
         # 255 characters total
         server_name_len = max_name_length - len(now) - len(prefix) - len('--')
         server_name = server_name[:server_name_len]
@@ -398,8 +398,8 @@ class SnapshotProcessor(worker.JobProcessor):
             retention = int(ret_str or 0)
         except exceptions.NotFound:
             msg = (_('[%(worker_tag)s] Could not retrieve retention for '
-                    'server %(instance)s: either the server was deleted or '
-                    'scheduled images for the server was disabled.')
+                     'server %(instance)s: either the server was deleted or '
+                     'scheduled images for the server was disabled.')
                    % {'worker_tag': self.get_worker_tag(),
                       'instance': instance_id})
 
@@ -422,7 +422,7 @@ class SnapshotProcessor(worker.JobProcessor):
             # 'image.status.upper() == "ACTIVE"' is a temporary hack to
             # incorporate rm2400. Ideally, this filtering should be performed
             # by passing an appropriate filter to the novaclient.
-            if (metadata.get("org.openstack__1__created_by") ==
+            if(metadata.get("org.openstack__1__created_by") ==
                "scheduled_images_service" and
                metadata.get("instance_uuid") == instance_id and
                image.status.upper() == "ACTIVE"):

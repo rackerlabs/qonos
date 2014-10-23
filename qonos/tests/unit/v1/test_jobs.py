@@ -49,14 +49,14 @@ class TestJobsApi(test_utils.BaseTestCase):
         def fake_gen_notify(context, event_type, payload, level='INFO'):
             self.assertEqual(ex_context, context)
             self.assertEqual(ex_event_type, event_type)
-            #NOTE(isethi): Avoiding repetitive checking of job
+            # NOTE(isethi): Avoiding repetitive checking of job
             self.assertTrue(payload['job'] is not None)
             self.assertEqual(ex_level, level)
         self.stubs.Set(utils, 'generate_notification', fake_gen_notify)
 
     def _create_jobs(self):
-        next_run = timeutils.parse_isotime('2012-11-27T02:30:00Z').\
-                             replace(tzinfo=None)
+        next_run = timeutils.parse_isotime(
+            '2012-11-27T02:30:00Z').replace(tzinfo=None)
         fixture = {
             'id': unit_utils.SCHEDULE_UUID1,
             'tenant': unit_utils.TENANT1,
@@ -73,12 +73,10 @@ class TestJobsApi(test_utils.BaseTestCase):
             'minute': '30',
             'hour': '2',
             'next_run': next_run,
-            'schedule_metadata': [
-                    {
-                    'key': 'instance_id',
-                    'value': 'my_instance',
-                    }
-            ],
+            'schedule_metadata': [{'key': 'instance_id',
+                                   'value': 'my_instance',
+                                   }
+                                  ],
         }
         self.schedule_2 = db_api.schedule_create(fixture)
 
@@ -110,12 +108,10 @@ class TestJobsApi(test_utils.BaseTestCase):
             'timeout': timeout,
             'hard_timeout': hard_timeout,
             'retry_count': 1,
-            'job_metadata': [
-                    {
-                    'key': 'instance_id',
-                    'value': 'my_instance',
-                    },
-                ]
+            'job_metadata': [{'key': 'instance_id',
+                              'value': 'my_instance',
+                              },
+                             ]
         }
         self.job_2 = db_api.job_create(fixture)
         fixture = {
@@ -303,8 +299,8 @@ class TestJobsApi(test_utils.BaseTestCase):
 
     def test_create(self):
 
-        expected_next_run = timeutils.parse_isotime('1989-01-19T12:00:00Z').\
-                                      replace(tzinfo=None)
+        expected_next_run = timeutils.parse_isotime(
+            '1989-01-19T12:00:00Z').replace(tzinfo=None)
         self._stub_notifications(None, 'qonos.job.create', 'fake-payload',
                                  'INFO')
 
@@ -335,8 +331,8 @@ class TestJobsApi(test_utils.BaseTestCase):
 
     def test_create_with_next_run(self):
 
-        expected_next_run = timeutils.parse_isotime('1989-01-19T12:00:00Z').\
-                                      replace(tzinfo=None)
+        expected_next_run = timeutils.parse_isotime(
+            '1989-01-19T12:00:00Z').replace(tzinfo=None)
 
         def fake_schedule_to_next_run(_schedule, start_time=None):
             self.assertEqual(timeutils.utcnow(), start_time)
@@ -448,12 +444,9 @@ class TestJobsApi(test_utils.BaseTestCase):
     def test_update_status(self):
         timeout = datetime.datetime(2012, 11, 16, 22, 0)
         request = unit_utils.get_fake_request(method='PUT')
-        body = {'status':
-                {
-                'status': 'PROCESSING',
-                'timeout': str(timeout)
-                }
-                }
+        body = {'status': {'status': 'PROCESSING',
+                           'timeout': str(timeout)
+                           }}
         job_status = self.controller.update_status(request,
                                                    self.job_1['id'],
                                                    body)['status']

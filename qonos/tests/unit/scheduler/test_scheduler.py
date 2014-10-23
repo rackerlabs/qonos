@@ -100,9 +100,9 @@ class TestScheduler(test_utils.BaseTestCase):
             return [{'id': unit_utils.SCHEDULE_UUID1, 'next_run': next_run}]
 
         self.stubs.Set(self.scheduler, 'get_schedules', fake)
-        self.client.create_job(unit_utils.SCHEDULE_UUID1,
-                               next_run).AndRaise(
-                                        client_exc.Duplicate())
+        self.client.create_job(
+            unit_utils.SCHEDULE_UUID1,
+            next_run).AndRaise(client_exc.Duplicate())
         self.mox.ReplayAll()
         self.scheduler.enqueue_jobs()
         self.mox.VerifyAll()

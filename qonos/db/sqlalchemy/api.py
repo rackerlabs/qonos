@@ -154,8 +154,13 @@ def reset():
     models.register_models(_ENGINE)
 
 
-def _before_cursor_execute(conn, cursor, statement, parameters, context,
-        executemany):
+def _before_cursor_execute(conn,
+                           cursor,
+                           statement,
+                           parameters,
+                           context,
+                           executemany,
+                           ):
     stack = inspect.stack()
     try:
         # NOTE(alaski): stack is a list of tuples like (_, filename, _,
@@ -170,8 +175,13 @@ def _before_cursor_execute(conn, cursor, statement, parameters, context,
     conn.info['query_method'] = method
 
 
-def _after_cursor_execute(conn, cursor, statement, parameters, context,
-        executemany):
+def _after_cursor_execute(conn,
+                          cursor,
+                          statement,
+                          parameters,
+                          context,
+                          executemany,
+                          ):
     method = conn.info.get('query_method')
     start_time = conn.info.get('query_start_time')
     if start_time:
@@ -269,7 +279,7 @@ def wrap_db_error(f):
     return _wrap
 
 
-#################### Schedule methods
+# Schedule methods
 
 
 @force_dict
@@ -336,7 +346,7 @@ def paginate_query(query, model, sort_keys, limit=None, marker=None):
             marker_values.append(v)
 
     # Note(nikhil): the underlying code only supports asc order of sort_dir
-    #at the moment. However, more than one sort_keys could be supplied.
+    # at the moment. However, more than one sort_keys could be supplied.
         criteria_list = []
         for i in xrange(0, len(sort_keys)):
             crit_attrs = []
@@ -364,7 +374,7 @@ def schedule_get_all(filter_args={}):
                    .options(sa_orm.joinedload_all(
                             models.Schedule.schedule_metadata))
     SCHEDULE_BASE_FILTERS = ['next_run_after', 'next_run_before', 'tenant',
-                    'limit', 'marker', 'action']
+                             'limit', 'marker', 'action']
 
     if 'next_run_after' in filter_args:
         query = query.filter(
@@ -376,17 +386,18 @@ def schedule_get_all(filter_args={}):
             models.Schedule.next_run <= filter_args['next_run_before'])
 
     if filter_args.get('tenant') is not None:
-        query = query.filter(
-                models.Schedule.tenant == filter_args['tenant'])
+        query = query.filter(models.Schedule.tenant ==
+                             filter_args['tenant'])
 
     if filter_args.get('action') is not None:
-        query = query.filter(
-                models.Schedule.action == filter_args['action'])
+        query = query.filter(models.Schedule.action ==
+                             filter_args['action'])
 
     for filter_key in filter_args.keys():
         if filter_key not in SCHEDULE_BASE_FILTERS:
             query = query.filter(models.Schedule.schedule_metadata.any(
-                        key=filter_key, value=filter_args[filter_key]))
+                                 key=filter_key,
+                                 value=filter_args[filter_key]))
 
     marker_schedule = None
     if filter_args.get('marker') is not None:
@@ -482,7 +493,7 @@ def _set_schedule_metadata(schedule_ref, metadata):
         metadata_ref.update(metadatum)
         schedule_ref.schedule_metadata.append(metadata_ref)
 
-#################### Schedule Metadata methods
+# Schedule Metadata methods
 
 
 @force_dict
@@ -556,7 +567,7 @@ def schedule_meta_delete(schedule_id, key):
     meta_ref.delete(session=session)
 
 
-##################### Worker methods
+# Worker methods
 
 
 @force_dict
@@ -609,7 +620,7 @@ def worker_delete(worker_id):
         worker.delete(session=session)
 
 
-#################### Job methods
+# Job methods
 
 
 @force_dict
@@ -711,7 +722,7 @@ def job_get_and_assign_next_by_action(action, worker_id, new_timeout):
         job_ref.update(job_values)
         job_ref.save(session=session)
     except sa_orm.exc.NoResultFound:
-        #In case the job was deleted during assignment return nothing
+        # In case the job was deleted during assignment return nothing
         LOG.warn(_('[JOB2WORKER] NoResultFound:'
                    ' Could not assign the job to worker_id: %(worker_id)s'
                    ' NoResultFound for job_id: %(job_id)s.')
@@ -719,7 +730,7 @@ def job_get_and_assign_next_by_action(action, worker_id, new_timeout):
                     'job_id': job_id})
         return None
     except sa_orm.exc.StaleDataError:
-        #In case the job was picked up by another transaction return nothing
+        # In case the job was picked up by another transaction return nothing
         LOG.warn(_('[JOB2WORKER] StaleDataError:'
                    ' Could not assign the job to worker_id: %(worker_id)s'
                    ' Job already assigned to another worker,'
@@ -750,7 +761,7 @@ def _job_get_next_by_action(session, now, action):
         .options(sa_orm.lazyload('job_metadata'))\
         .filter_by(action=action)\
         .filter(~models.Job.status.in_(statuses))\
-        .filter(sa_sql.or_(models.Job.worker_id == None,
+        .filter(sa_sql.or_(models.Job.worker_id.is_(None),
                            models.Job.timeout <= now_round_off))\
         .order_by(models.Job.updated_at.asc())\
         .first()
@@ -758,6 +769,7 @@ def _job_get_next_by_action(session, now, action):
     # Force loading of the job_metadata
     if job_ref is not None:
         m = job_ref['job_metadata']
+        LOG.info(_('Job Metatdata forcefully loaded: %s' % m))
 
     return job_ref
 
@@ -894,7 +906,7 @@ def job_metadata_update(job_id, values):
     return job_meta_get_all_by_job_id(job_id)
 
 
-##################### Job fault methods
+# Job fault methods
 
 def job_fault_latest_for_job_id(job_id):
     session = get_session()
