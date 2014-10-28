@@ -16,8 +16,21 @@
 
 from sqlalchemy import MetaData, Table, Index
 
+from qonos.openstack.common.gettextutils import _
+import qonos.openstack.common.log as logging
+
+LOG = logging.getLogger(__name__)
+
 INDEX_STATUS_NAME = 'status_idx'
 INDEX_TIMEOUT_NAME = 'timeout_idx'
+
+
+def _has_index(indexes, idx_name):
+    for index in indexes:
+        if idx_name == index.name:
+            return True
+
+    return False
 
 
 def upgrade(migrate_engine):
@@ -26,11 +39,17 @@ def upgrade(migrate_engine):
 
     jobs = Table('jobs', meta, autoload=True)
 
-    index = Index(INDEX_STATUS_NAME, jobs.c.status)
-    index.create(migrate_engine)
+    if not _has_index(jobs.indexes, INDEX_STATUS_NAME):
+        index = Index(INDEX_STATUS_NAME, jobs.c.status)
+        index.create(migrate_engine)
+    else:
+        LOG.info(_('Index %s already exists.') % INDEX_STATUS_NAME)
 
-    index = Index(INDEX_TIMEOUT_NAME, jobs.c.timeout)
-    index.create(migrate_engine)
+    if not _has_index(jobs.indexes, INDEX_TIMEOUT_NAME):
+        index = Index(INDEX_TIMEOUT_NAME, jobs.c.timeout)
+        index.create(migrate_engine)
+    else:
+        LOG.info(_('Index %s already exists.') % INDEX_TIMEOUT_NAME)
 
 
 def downgrade(migrate_engine):
