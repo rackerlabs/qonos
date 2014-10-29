@@ -108,11 +108,11 @@ class SnapshotProcessor(worker.JobProcessor):
         self.nova_client_factory = nova_client_factory
 
     def process_job(self, job):
-        LOG.info(_("Worker %(worker_id)s processing job: %(job)s") %
-                 {'worker_id': self.worker.worker_id,
+        LOG.info(_("[%(worker_tag)s] Processing job: %(job)s") %
+                 {'worker_tag': self.get_worker_tag(),
                      'job': job['id']})
-        LOG.debug(_("Worker %(worker_id)s processing job: %(job)s") %
-                  {'worker_id': self.worker.worker_id,
+        LOG.debug(_("[%(worker_tag)s] Processing job: %(job)s") %
+                  {'worker_tag': self.get_worker_tag(),
                    'job': str(job)})
         self.current_job = job
         try:
@@ -120,9 +120,8 @@ class SnapshotProcessor(worker.JobProcessor):
         except exc.PollingException as e:
             LOG.exception(e)
         except Exception:
-            msg = _("Worker %(worker_id)s error processing job:"
-                    " %(job)s")
-            LOG.exception(msg % {'worker_id': self.worker.worker_id,
+            msg = _("[%(worker_tag)s] Error processing job: %(job)s")
+            LOG.exception(msg % {'worker_tag': self.get_worker_tag(),
                                  'job': job['id']})
 
             exc_type, exc_value, exc_tb = sys.exc_info()
@@ -147,8 +146,8 @@ class SnapshotProcessor(worker.JobProcessor):
                    ' hard timeout: %(hard_timeout)s.' %
                    {'job_id': job_id, 'hard_timeout': job['hard_timeout']})
             self._job_hard_timed_out(job, msg)
-            LOG.info(_('Worker %(worker_id)s Job hard timed out: %(msg)s') %
-                     {'worker_id': self.worker.worker_id, 'msg': msg})
+            LOG.info(_('[%(worker_tag)s] Job hard timed out: %(msg)s') %
+                     {'worker_tag': self.get_worker_tag(), 'msg': msg})
             return
 
         max_retried = job['retry_count'] > self.max_retry
@@ -157,18 +156,18 @@ class SnapshotProcessor(worker.JobProcessor):
                    ' max_retry count: %(retry_count)s.' %
                    {'job_id': job_id, 'retry_count': job['retry_count']})
             self._job_max_retried(job, msg)
-            LOG.info(_('Worker %(worker_id)s Job max_retry reached: %(msg)s') %
-                     {'worker_id': self.worker.worker_id, 'msg': msg})
+            LOG.info(_('[%(worker_tag)s] Job max_retry reached: %(msg)s') %
+                     {'worker_tag': self.get_worker_tag(), 'msg': msg})
             return
 
         schedule = self._get_schedule(job)
         if schedule is None:
-            msg = ('Schedule %(schedule_id)s deleted for job %(job_id)s' %
+            msg = ('Schedule %(schedule_id)s not found for job %(job_id)s' %
                    {'schedule_id': job['schedule_id'], 'job_id': job_id})
             self._job_cancelled(job, msg)
 
-            LOG.info(_('Worker %(worker_id)s job cancelled: %(msg)s') %
-                     {'worker_id': self.worker.worker_id,
+            LOG.info(_('[%(worker_tag)s] Job cancelled: %(msg)s') %
+                     {'worker_tag': self.get_worker_tag(),
                       'msg': msg})
             return
 
@@ -191,8 +190,8 @@ class SnapshotProcessor(worker.JobProcessor):
             if image_id is None:
                 return
         else:
-            LOG.info(_("Worker %(worker_id)s resuming image: %(image_id)s")
-                     % {'worker_id': self.worker.worker_id,
+            LOG.info(_("[%(worker_tag)s] Resuming image: %(image_id)s")
+                     % {'worker_tag': self.get_worker_tag(),
                         'image_id': image_id})
 
         active = False
@@ -225,7 +224,7 @@ class SnapshotProcessor(worker.JobProcessor):
             timeout = self._get_utcnow() + self.timeout_worker_stop
             self._job_processing(self.current_job, timeout=timeout)
 
-        LOG.debug("Snapshot complete")
+        LOG.debug("[%s] Snapshot complete" % self.get_worker_tag())
 
     def cleanup_processor(self):
         """
@@ -252,8 +251,10 @@ class SnapshotProcessor(worker.JobProcessor):
                 err_msg = _("ERROR get_image_id():"
                             " job_id: %(job_id)s, image_id: %(image_id)s"
                             " err:%(org_err_msg)s") % err_val
-                LOG.exception("Error getting snapshot image details. %s",
-                              err_msg)
+                LOG.exception("[%(worker_tag)s] Error getting snapshot image "
+                              "details. %(msg)s"
+                              % {'worker_tag': self.get_worker_tag(),
+                                 'msg': err_msg})
                 self._job_error_occurred(job, error_message=err_msg)
                 raise exc.PollingException(err_msg)
         return image_id
@@ -269,13 +270,16 @@ class SnapshotProcessor(worker.JobProcessor):
             "org.openstack__1__created_by": "scheduled_images_service"}
 
         try:
-            instance_name_msg = ("Attempting to get the instance name for "
-                                 "instance_id %s" % instance_id)
+            instance_name_msg = ("[%(worker_tag)s] Getting instance name for "
+                                 "instance_id %(instance_id)s"
+                                 % {'worker_tag': self.get_worker_tag(),
+                                    'instance_id': instance_id})
             LOG.info(instance_name_msg)
             server_name = self._get_nova_client().servers.\
                 get(instance_id).name
-            msg = ("Attempting to create an image for instance "
-                   "%s" % server_name)
+            msg = ("[%(worker_tag)s] Creating image for instance %(instance)s"
+                   % {'worker_tag': self.get_worker_tag(),
+                      'instance': server_name})
             LOG.info(msg)
             image_id = self._get_nova_client().servers.create_image(
                 instance_id,
@@ -289,8 +293,8 @@ class SnapshotProcessor(worker.JobProcessor):
             self._job_error_occurred(job, error_message=msg)
             return None
 
-        LOG.info(_("Worker %(worker_id)s started create image: "
-                   " %(image_id)s") % {'worker_id': self.worker.worker_id,
+        LOG.info(_("[%(worker_tag)s] Started create image: "
+                   " %(image_id)s") % {'worker_tag': self.get_worker_tag(),
                                        'image_id': image_id})
 
         self._add_job_metadata(image_id=image_id)
@@ -335,7 +339,9 @@ class SnapshotProcessor(worker.JobProcessor):
             err_msg = (
                 _("PollingExc: image: %(image_id)s, err: %(org_err_msg)s") %
                 err_val)
-            LOG.exception(err_msg)
+            LOG.exception('[%(worker_tag)s] %(msg)s'
+                          % {'worker_tag': self.get_worker_tag(),
+                             'msg': err_msg})
             self._job_error_occurred(job, error_message=err_msg)
             raise exc.PollingException(err_msg)
 
@@ -361,23 +367,25 @@ class SnapshotProcessor(worker.JobProcessor):
 
             if len(scheduled_images) > retention:
                 to_delete = scheduled_images[retention:]
-                LOG.info(_('Worker %(worker_id)s removing %(remove)d '
+                LOG.info(_('[%(worker_tag)s] Removing %(remove)d '
                            'images for a retention of %(retention)d') %
-                         {'worker_id': self.worker.worker_id,
+                         {'worker_tag': self.get_worker_tag(),
                           'remove': len(to_delete),
                           'retention': retention})
                 for image in to_delete:
                     image_id = image.id
                     self._get_nova_client().images.delete(image_id)
-                    LOG.info(_('Worker %(worker_id)s removed image '
+                    LOG.info(_('[%(worker_tag)s] Removed image '
                                '%(image_id)s') %
-                             {'worker_id': self.worker.worker_id,
+                             {'worker_tag': self.get_worker_tag(),
                               'image_id': image_id})
         else:
-            msg = ("Retention %(retention)s is found for for schedule "
-                   "%(sched)s for %(instance)s" % {'retention': retention,
-                                                   'sched': schedule_id,
-                                                   'instance': instance_id})
+            msg = ("[%(worker_tag)s] Retention %(retention)s found for "
+                   "schedule %(schedule)s for %(instance)s"
+                   % {'worker_tag': self.get_worker_tag(),
+                      'retention': retention,
+                      'schedule': schedule_id,
+                      'instance': instance_id})
             LOG.info(msg)
 
     def _get_retention(self, instance_id):
@@ -389,14 +397,19 @@ class SnapshotProcessor(worker.JobProcessor):
             ret_str = result.retention
             retention = int(ret_str or 0)
         except exceptions.NotFound:
-            msg = _('Could not retrieve retention for server %s: either the'
-                    ' server was deleted or scheduled images for'
-                    ' the server was disabled.') % instance_id
+            msg = (_('[%(worker_tag)s] Could not retrieve retention for '
+                    'server %(instance)s: either the server was deleted or '
+                    'scheduled images for the server was disabled.')
+                   % {'worker_tag': self.get_worker_tag(),
+                      'instance': instance_id})
 
             LOG.warn(msg)
         except Exception:
-            msg = _('Error getting retention for server %s: ')
-            LOG.exception(msg % instance_id)
+            msg = (_('[%(worker_tag)s] Error getting retention for server '
+                     '%(instance)s')
+                   % {'worker_tag': self.get_worker_tag(),
+                      'instance': instance_id})
+            LOG.exception(msg)
 
         return retention
 

@@ -24,28 +24,28 @@ from qonos.tests import utils as test_utils
 from qonos.worker import worker
 
 
-class TestWorker(test_utils.BaseTestCase):
+class TestSingleProcessWorker(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestWorker, self).setUp()
+        super(TestSingleProcessWorker, self).setUp()
         self.client_factory = mock.Mock()
         self.client = mock.Mock()
         self.client_factory.return_value = self.client
         self.processor = mock.Mock()
-        self.worker = worker.Worker(self.client_factory,
+        self.worker = worker.SingleProcessWorker(self.client_factory,
                                     self.processor)
 
     def tearDown(self):
-        super(TestWorker, self).tearDown()
+        super(TestSingleProcessWorker, self).tearDown()
 
     def test_init_worker(self):
-        self.assertFalse(self.worker.pid)
+        self.assertIsNotNone(self.worker.parent_pid)
         self.assertFalse(self.worker.running)
-        self.client.create_worker.return_value = {"id": 1}
+        self.client.create_worker.return_value = {'id': 'some-guid'}
 
         self.worker.init_worker()
 
-        self.assertEquals(self.worker.worker_id, 1)
-        self.assertTrue(self.worker.pid)
+        self.assertEqual('some-guid', self.worker.worker_id)
+        self.assertIsNotNone(self.worker.parent_pid)
         self.assertTrue(self.worker.running)
         self.processor.init_processor.assert_called_once_with(self.worker)
         self.client.create_worker.assert_called_once()
@@ -56,8 +56,6 @@ class TestWorker(test_utils.BaseTestCase):
         mtime_time.return_value = _proc_title_time
 
         job = fakes.JOB['job']
-
-        self.assertIsNone(self.worker._child_pid)
 
         self.worker.process_job(job)
 
@@ -75,6 +73,20 @@ class TestWorker(test_utils.BaseTestCase):
                                                               None,
                                                               mock.ANY)
 
+
+class TestMultiChildWorker(test_utils.BaseTestCase):
+    def setUp(self):
+        super(TestMultiChildWorker, self).setUp()
+        self.client_factory = mock.Mock()
+        self.client = mock.Mock()
+        self.client_factory.return_value = self.client
+        self.processor = mock.Mock()
+        self.worker = worker.MultiChildWorker(self.client_factory,
+                                    self.processor)
+
+    def tearDown(self):
+        super(TestMultiChildWorker, self).tearDown()
+
     @mock.patch('os.fork', side_effect=[0])
     @mock.patch('os.waitpid')
     @mock.patch('os._exit')
@@ -82,9 +94,9 @@ class TestWorker(test_utils.BaseTestCase):
                                                             mos_exit,
                                                             mos_waitpid,
                                                             mos_fork):
-        self.config(fork_job_process=True, group='worker')
+        self.config(max_child_processes=1, group='worker')
 
-        self.assertIsNone(self.worker._child_pid)
+        self.assertEqual(0, len(self.worker.child_pids))
 
         job = fakes.JOB['job']
         self.worker.process_job(job)
@@ -96,63 +108,131 @@ class TestWorker(test_utils.BaseTestCase):
         self.processor.process_job.assert_called_once_with(job)
 
     @mock.patch('os.fork', side_effect=[1234])
-    @mock.patch('os.waitpid')
     @mock.patch('os._exit')
-    def test_worker_should_wait_for_child_process_to_exit(self,
-                                                          mos_exit,
-                                                          mos_waitpid,
-                                                          mos_fork):
-        self.config(fork_job_process=True, group='worker')
+    def test_worker_should_capture_child_pid(self,
+                                             mos_exit,
+                                             mos_fork):
+        self.config(max_child_processes=1, group='worker')
 
         job = fakes.JOB['job']
         self.worker.process_job(job)
 
         expected_child_pid = 1234
         mos_fork.assert_called_once()
-        mos_waitpid.assert_called_once_with(expected_child_pid, 0)
         self.assertEquals(0, mos_exit.call_count)
 
-        self.assertEquals(expected_child_pid, self.worker._child_pid)
-        self.assertEquals(0, self.processor.process_job.call_count)
+        expected = set([(expected_child_pid, job['id'])])
+        self.assertEqual(expected, self.worker.child_pids)
+        self.assertEqual(0, self.processor.process_job.call_count)
 
     @mock.patch('time.time')
     @mock.patch('os._exit')
     def test_worker_child_process_main(self,
                                        mos_exit,
-                                       mtime_time,
-                                       ):
+                                       mtime_time):
         _proc_title_time = 1403530578
         mtime_time.return_value = _proc_title_time
 
         mock.MagicMock()
         job = fakes.JOB['job']
 
-        self.worker.child_process_main(job)
+        self.worker._child_process_main(job)
 
         mos_exit.assert_called_once_with(0)
 
         self.processor.process_job.assert_called_once_with(job)
 
-    @mock.patch('os.fork')
-    @mock.patch('os.waitpid')
-    @mock.patch('os._exit')
-    def test_worker_should_not_fork_proc_on_fork_job_process_off(self,
-                                                                 mos_exit,
-                                                                 mos_waitpid,
-                                                                 mos_fork):
-        self.worker.child_process_main = mock.MagicMock()
-        self.config(fork_job_process=False, group='worker')
+    @mock.patch('os.waitpid', side_effect=[(0, 0), (0, 0)])
+    def test_worker_can_accept_jobs(self, mos_waitpid):
+        self.config(max_child_processes=3, group='worker')
 
-        job = fakes.JOB['job']
-        self.worker.process_job(job)
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
 
-        self.assertEquals(0, self.worker.child_process_main.call_count)
-        self.assertEquals(0, mos_fork.call_count)
-        self.assertEquals(0, mos_waitpid.call_count)
-        self.assertEquals(0, mos_exit.call_count)
+        self.assertTrue(self.worker._can_accept_job())
 
-        self.assertIsNone(self.worker._child_pid)
-        self.processor.process_job.assert_called_once_with(job)
+    @mock.patch('os.waitpid', side_effect=[(0, 0), (0, 0), (0, 0)])
+    def test_worker_cannot_accept_jobs(self, mos_waitpid):
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        self.assertFalse(self.worker._can_accept_job())
+
+    @mock.patch('os.waitpid', side_effect=[(0, 0), (0, 0), (0, 0)])
+    def test_worker_check_children_none_exit(self, mos_waitpid):
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        self.assertEqual(3, self.worker._check_children())
+
+    def test_worker_check_children_none_exit(self):
+        def mock_waitpid(pid, params):
+            return (0, 0)
+
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        with mock.patch('os.waitpid', side_effect=mock_waitpid):
+            self.assertEqual(3, self.worker._check_children())
+
+    def test_worker_check_children_all_exit_normally(self):
+        def mock_waitpid(pid, params):
+            return (pid, 0)
+
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        with mock.patch('os.waitpid', side_effect=mock_waitpid):
+            self.assertEqual(0, self.worker._check_children())
+
+    def test_worker_check_children_one_exits_abnormally(self):
+        def mock_waitpid(pid, params):
+            if pid == 2:
+                return (pid, 256)
+            else:
+                return (0, 0)
+
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        with mock.patch('os.waitpid', side_effect=mock_waitpid):
+            self.assertEqual(2, self.worker._check_children())
+
+    def test_worker_check_children_one_exits_normally(self):
+        def mock_waitpid(pid, params):
+            if pid == 2:
+                return (pid, 0)
+            else:
+                return (0, 0)
+
+        self.config(max_child_processes=3, group='worker')
+
+        self.worker.child_pids.add((1, 'job 1'))
+        self.worker.child_pids.add((2, 'job 2'))
+        self.worker.child_pids.add((3, 'job 3'))
+
+        with mock.patch('os.waitpid', side_effect=mock_waitpid):
+            self.assertEqual(2, self.worker._check_children())
+
+    def test_parse_status(self):
+        self.assertEqual((0, 0), self.worker._parse_status(0))
+        self.assertEqual((1, 0), self.worker._parse_status(256))
+        self.assertEqual((0, 1), self.worker._parse_status(1))
 
 
 class TestWorkerWithMox(test_utils.BaseTestCase):
