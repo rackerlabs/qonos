@@ -31,6 +31,6 @@ def tearDownModule():
     base.db_api = None
 
 
-#NOTE(ameade): Pull in cross driver db tests
+# NOTE(ameade): Pull in cross driver db tests
 thismodule = sys.modules[__name__]
 utils.import_test_cases(thismodule, base, suffix="_Simple_DB")

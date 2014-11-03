@@ -88,15 +88,15 @@ class JobsController(object):
             try:
                 expected_next_run = timeutils.parse_isotime(expected_next_run)
                 expected_next_run = expected_next_run.replace(tzinfo=None)
-            except ValueError as e:
+            except ValueError:
                 msg = _('Invalid "next_run" value. Must be ISO 8601 format')
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
         next_run = api_utils.schedule_to_next_run(schedule, timeutils.utcnow())
         next_run = next_run.replace(tzinfo=None)
         try:
-            self.db_api.schedule_test_and_set_next_run(schedule['id'],
-                        expected_next_run, next_run)
+            self.db_api.schedule_test_and_set_next_run(
+                schedule['id'], expected_next_run, next_run)
 
         except exception.NotFound:
             msg = _("Specified next run does not match the current next run"
@@ -118,15 +118,14 @@ class JobsController(object):
 
         job_metadata = []
         for metadata in schedule['schedule_metadata']:
-            job_metadata.append({
-                    'key': metadata['key'],
-                    'value': metadata['value']
-                    })
+            job_metadata.append({'key': metadata['key'],
+                                 'value': metadata['value']
+                                 })
 
         values['job_metadata'] = job_metadata
 
         job_action = values['action']
-        if not 'timeout' in values:
+        if 'timeout' not in values:
             values['timeout'] = api_utils.get_new_timeout_by_action(job_action)
             values['hard_timeout'] = \
                 api_utils.get_new_timeout_by_action(job_action)

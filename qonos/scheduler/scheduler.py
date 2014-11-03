@@ -50,7 +50,7 @@ class Scheduler(object):
 
         if CONF.scheduler.daemonized:
             import daemon
-            #NOTE(ameade): We need to preserve all open files for logging
+            # NOTE(ameade): We need to preserve all open files for logging
             open_files = utils.get_qonos_open_file_log_handlers()
             signal_map = self._signal_map()
             with daemon.DaemonContext(files_preserve=open_files,

@@ -32,7 +32,7 @@ class TestSingleProcessWorker(test_utils.BaseTestCase):
         self.client_factory.return_value = self.client
         self.processor = mock.Mock()
         self.worker = worker.SingleProcessWorker(self.client_factory,
-                                    self.processor)
+                                                 self.processor)
 
     def tearDown(self):
         super(TestSingleProcessWorker, self).tearDown()
@@ -82,7 +82,7 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
         self.client_factory.return_value = self.client
         self.processor = mock.Mock()
         self.worker = worker.MultiChildWorker(self.client_factory,
-                                    self.processor)
+                                              self.processor)
 
     def tearDown(self):
         super(TestMultiChildWorker, self).tearDown()
@@ -171,7 +171,7 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
 
         self.assertEqual(3, self.worker._check_children())
 
-    def test_worker_check_children_none_exit(self):
+    def test_worker_check_children_none_exit2(self):
         def mock_waitpid(pid, params):
             return (0, 0)
 

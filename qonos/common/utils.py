@@ -56,11 +56,11 @@ def cron_string_to_next_datetime(minute="*", hour="*", day_of_month="*",
                                  month="*", day_of_week="*", start_time=None):
     start_time = start_time or timeutils.utcnow()
     cron_string = ("%s %s %s %s %s" %
-                  (_default_if_none(minute, '*'),
-                   _default_if_none(hour, '*'),
-                   _default_if_none(day_of_month, '*'),
-                   _default_if_none(month, '*'),
-                   _default_if_none(day_of_week, '*')))
+                   (_default_if_none(minute, '*'),
+                    _default_if_none(hour, '*'),
+                    _default_if_none(day_of_month, '*'),
+                    _default_if_none(month, '*'),
+                    _default_if_none(day_of_week, '*')))
     iter = croniter(cron_string, start_time)
     return iter.get_next(datetime.datetime)
 
@@ -106,7 +106,7 @@ def get_qonos_open_file_log_handlers():
 def log_warning_and_dismiss_exception(logger=LOG):
     try:
         yield
-    except Exception as ex:
+    except Exception:
         name, value, tb = sys.exc_info()
         msg = '%(name)s: %(message)s'
         logger.warn(msg % {"name": name.__name__, "message": value})

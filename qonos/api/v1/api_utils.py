@@ -56,7 +56,7 @@ def check_read_only_properties(values):
 
     if bad_keys:
         msg = _("Cannot update the following read-only attributes: %s") \
-                % ', '.join(bad_keys)
+            % ', '.join(bad_keys)
         raise exception.Forbidden(message=unicode(msg))
 
     return values

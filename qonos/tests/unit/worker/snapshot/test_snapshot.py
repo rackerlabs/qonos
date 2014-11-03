@@ -123,19 +123,20 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         response = {'status': 'CANCELLED', 'timeout': self.job['timeout']}
         self.worker.update_job(fakes.JOB_ID, 'CANCELLED', timeout=None,
                                error_message=mox.IsA(str)).AndReturn(response)
-        expected_payload = {'job': {'status': 'CANCELLED',
-                   'hard_timeout': self.job['hard_timeout'],
-                   'created_at': self.job['created_at'],
-                   'modified_at': self.job['modified_at'],
-                   'retry_count': 1,
-                   'schedule_id': '33333333-3333-3333-3333-33333333',
-                   'worker_id': '11111111-1111-1111-1111-11111111',
-                   'timeout': self.job['timeout'],
-                   'action': 'snapshot',
-                   'id': '22222222-2222-2222-2222-22222222',
-                   'tenant': '44444444-4444-4444-4444-44444444',
-                   'metadata': {'instance_id':
-                   '55555555-5555-5555-5555-55555555'}}}
+        expected_payload = {'job':
+                            {'status': 'CANCELLED',
+                             'hard_timeout': self.job['hard_timeout'],
+                             'created_at': self.job['created_at'],
+                             'modified_at': self.job['modified_at'],
+                             'retry_count': 1,
+                             'schedule_id': '33333333-3333-3333-3333-33333333',
+                             'worker_id': '11111111-1111-1111-1111-11111111',
+                             'timeout': self.job['timeout'],
+                             'action': 'snapshot',
+                             'id': '22222222-2222-2222-2222-22222222',
+                             'tenant': '44444444-4444-4444-4444-44444444',
+                             'metadata': {'instance_id':
+                                          '55555555-5555-5555-5555-55555555'}}}
         utils.generate_notification(None, 'qonos.job.failed', expected_payload,
                                     mox.IsA(str))
         self.mox.ReplayAll()
@@ -161,19 +162,20 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=mox.IsA(str))\
             .AndReturn({'status': 'HARD_TIMED_OUT',
                         'timeout': self.job['timeout']})
-        expected_payload = {'job': {'status': 'HARD_TIMED_OUT',
-                   'hard_timeout': self.job['hard_timeout'],
-                   'created_at': self.job['created_at'],
-                   'modified_at': self.job['modified_at'],
-                   'retry_count': 1,
-                   'schedule_id': '33333333-3333-3333-3333-33333333',
-                   'worker_id': '11111111-1111-1111-1111-11111111',
-                   'timeout': self.job['timeout'],
-                   'action': 'snapshot',
-                   'id': '22222222-2222-2222-2222-22222222',
-                   'tenant': '44444444-4444-4444-4444-44444444',
-                   'metadata': {'instance_id':
-                   '55555555-5555-5555-5555-55555555'}}}
+        expected_payload = {'job':
+                            {'status': 'HARD_TIMED_OUT',
+                             'hard_timeout': self.job['hard_timeout'],
+                             'created_at': self.job['created_at'],
+                             'modified_at': self.job['modified_at'],
+                             'retry_count': 1,
+                             'schedule_id': '33333333-3333-3333-3333-33333333',
+                             'worker_id': '11111111-1111-1111-1111-11111111',
+                             'timeout': self.job['timeout'],
+                             'action': 'snapshot',
+                             'id': '22222222-2222-2222-2222-22222222',
+                             'tenant': '44444444-4444-4444-4444-44444444',
+                             'metadata': {'instance_id':
+                                          '55555555-5555-5555-5555-55555555'}}}
 
         utils.generate_notification(None, 'qonos.job.failed', expected_payload,
                                     mox.IsA(str))
@@ -202,19 +204,20 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                error_message=mox.IsA(str))\
             .AndReturn({'status': 'MAX_RETRIED',
                         'timeout': self.job['timeout']})
-        expected_payload = {'job': {'status': 'MAX_RETRIED',
-                   'hard_timeout': self.job['hard_timeout'],
-                   'created_at': self.job['created_at'],
-                   'modified_at': self.job['modified_at'],
-                   'retry_count': self.job['retry_count'],
-                   'schedule_id': '33333333-3333-3333-3333-33333333',
-                   'worker_id': '11111111-1111-1111-1111-11111111',
-                   'timeout': self.job['timeout'],
-                   'action': 'snapshot',
-                   'id': '22222222-2222-2222-2222-22222222',
-                   'tenant': '44444444-4444-4444-4444-44444444',
-                   'metadata': {'instance_id':
-                   '55555555-5555-5555-5555-55555555'}}}
+        expected_payload = {'job':
+                            {'status': 'MAX_RETRIED',
+                             'hard_timeout': self.job['hard_timeout'],
+                             'created_at': self.job['created_at'],
+                             'modified_at': self.job['modified_at'],
+                             'retry_count': self.job['retry_count'],
+                             'schedule_id': '33333333-3333-3333-3333-33333333',
+                             'worker_id': '11111111-1111-1111-1111-11111111',
+                             'timeout': self.job['timeout'],
+                             'action': 'snapshot',
+                             'id': '22222222-2222-2222-2222-22222222',
+                             'tenant': '44444444-4444-4444-4444-44444444',
+                             'metadata': {'instance_id':
+                                          '55555555-5555-5555-5555-55555555'}}}
 
         utils.generate_notification(None, 'qonos.job.failed', expected_payload,
                                     mox.IsA(str))
@@ -285,8 +288,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_process_job_should_succeed_immediately(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
@@ -361,13 +364,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.job['metadata']['image_id'] = IMAGE_ID
         self.job['status'] = 'ERROR'
 
-        #make an error checking the previous image
+        # make an error checking the previous image
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ERROR'))
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention()
@@ -382,8 +385,10 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
                                     mox.IsA(str)).MultipleTimes()
         utils.generate_notification(None, 'qonos.job.run.end', mox.IsA(dict),
                                     mox.IsA(str))
-        self.worker.update_job(fakes.JOB_ID, 'DONE',
-                error_message=None, timeout=None).AndReturn(None)
+        self.worker.update_job(fakes.JOB_ID,
+                               'DONE',
+                               error_message=None,
+                               timeout=None).AndReturn(None)
 
         self.mox.ReplayAll()
 
@@ -433,8 +438,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
             MockImageStatus('KILLED'))
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
 
@@ -457,8 +462,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_process_job_should_succeed_after_multiple_tries(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
         self.nova_client.images.get(IMAGE_ID).AndReturn(
@@ -505,8 +510,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         job['timeout'] = base_time + datetime.timedelta(minutes=60)
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
         self.nova_client.images.get(IMAGE_ID).AndReturn(
@@ -553,8 +558,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         job['timeout'] = base_time + datetime.timedelta(minutes=60)
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
         self.nova_client.images.get(IMAGE_ID).AndReturn(
@@ -608,8 +613,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         job['timeout'] = base_time + datetime.timedelta(minutes=60)
 
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('QUEUED'))
         self.nova_client.images.get(IMAGE_ID).MultipleTimes().AndReturn(
@@ -666,8 +671,9 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
 
         if include_create:
             self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-            self.nova_client.servers.create_image(mox.IsA(str),
-                mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+            self.nova_client.servers.create_image(
+                mox.IsA(str), mox.IsA(str),
+                self.snapshot_meta).AndReturn(IMAGE_ID)
 
         if include_queued:
             self.nova_client.images.get(IMAGE_ID).AndReturn(
@@ -702,12 +708,12 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         metadata['image_id'] = IMAGE_ID
 
         backoff_factor = DEFAULT_BACKOFF_FACTOR ** job['retry_count']
-        timeout = time_seq[-1] + datetime.timedelta(minutes=
-                                                    DEFAULT_TIMEOUT_INCR *
-                                                    backoff_factor)
-        self.worker.update_job(fakes.JOB_ID, 'ERROR', timeout=timeout,
-                               error_message=mox.IsA(unicode)).AndReturn(
-                                {'status': 'ERROR', 'timeout': job['timeout']})
+        timeout = time_seq[-1] + datetime.timedelta(
+            minutes=DEFAULT_TIMEOUT_INCR * backoff_factor)
+        self.worker.update_job(
+            fakes.JOB_ID, 'ERROR', timeout=timeout,
+            error_message=mox.IsA(unicode)).AndReturn(
+                {'status': 'ERROR', 'timeout': job['timeout']})
 
         self.mox.StubOutWithMock(utils, 'generate_notification')
 
@@ -755,8 +761,9 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         job['retry_count'] = 2
         job['hard_timeout'] = timeutils.strtime(
             at=(new_now + datetime.timedelta(minutes=120)))
-        self._do_test_process_job_should_update_image_error(status,
-            include_create=False, include_queued=False, is_retry=True, job=job)
+        self._do_test_process_job_should_update_image_error(
+            status, include_create=False, include_queued=False, is_retry=True,
+            job=job)
 
     def test_process_job_should_update_image_error(self):
         status = MockImageStatus('ERROR')
@@ -780,8 +787,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_doesnt_delete_images_less_than_retention(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention(3)
@@ -812,14 +819,14 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_doesnt_delete_images_with_bad_retention(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention("gabe 1337")
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndReturn(mock_retention)
-        mock_server = MockServer()
+        MockServer()
         self._init_worker_mock()
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
@@ -842,13 +849,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_doesnt_delete_images_with_no_retention(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndRaise(exceptions.NotFound('404!'))
-        mock_server = MockServer(retention=None)
+        MockServer(retention=None)
         self._init_worker_mock()
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
@@ -871,13 +878,13 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
     def test_doesnt_delete_images_on_retention_error(self):
         timeutils.set_time_override()
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         self.nova_client.rax_scheduled_images_python_novaclient_ext.\
             get(mox.IsA(str)).AndRaise(Exception())
-        mock_server = MockServer(retention=None)
+        MockServer(retention=None)
         self._init_worker_mock()
         self.mox.StubOutWithMock(utils, 'generate_notification')
         utils.generate_notification(None, 'qonos.job.run.start', mox.IsA(dict),
@@ -901,8 +908,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         timeutils.set_time_override()
         instance_id = self.job['metadata']['instance_id']
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention(3)
@@ -937,8 +944,8 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         timeutils.set_time_override()
         instance_id = self.job['metadata']['instance_id']
         self.nova_client.servers.get(mox.IsA(str)).AndReturn(MockServer())
-        self.nova_client.servers.create_image(mox.IsA(str),
-            mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
+        self.nova_client.servers.create_image(
+            mox.IsA(str), mox.IsA(str), self.snapshot_meta).AndReturn(IMAGE_ID)
         self.nova_client.images.get(IMAGE_ID).AndReturn(
             MockImageStatus('ACTIVE'))
         mock_retention = MockRetention(3)
@@ -948,7 +955,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         image_list = self._create_images_list(mock_server.id, 5)
         to_delete = image_list[3:]
         image_list.extend(self._create_images_list(
-                uuidutils.generate_uuid(), 3))
+            uuidutils.generate_uuid(), 3))
         self.nova_client.images.list(detailed=True).AndReturn(image_list)
         # The image list happens to be in descending created order
         self.nova_client.images.delete(to_delete[0].id)

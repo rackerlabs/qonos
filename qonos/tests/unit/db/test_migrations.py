@@ -434,7 +434,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in schedules_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         # Setting microsecond to 0 because using MySQL it only goes to seconds
         now = datetime.datetime.now().replace(microsecond=0)
         ins_schedule = {
@@ -494,7 +494,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in schedule_metadata_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         now = datetime.datetime.now()
         ins_schedule_metadata = {
             'id': 'WORKER-1',
@@ -558,7 +558,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in workers_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         now = datetime.datetime.now()
         ins_worker = {
             'id': 'WORKER-1',
@@ -612,7 +612,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in jobs_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         now = datetime.datetime.now()
 
         ins_job = {
@@ -680,7 +680,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in job_metadata_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         now = datetime.datetime.now()
 
         ins_job_metadata = {
@@ -735,7 +735,7 @@ class TestMigrations(utils.BaseTestCase):
         col_names = [col.name for col in job_faults_table.columns]
         self.assertEqual(expected_col_names, col_names)
 
-        #try insert and fetch a record
+        # try insert and fetch a record
         now = datetime.datetime.now()
 
         ins_job_fault = {
@@ -894,14 +894,14 @@ class TestMigrations(utils.BaseTestCase):
         # for jobs with no version_id
         expected_job_ids = set(['JOB-3', 'JOB-4', 'JOB-5'])
         results = jobs.select().where(
-            jobs.c.version_id == None).execute().fetchall()
+            jobs.c.version_id.is_(None)).execute().fetchall()
         actual_job_ids = set(row['id'] for row in results)
         self.assertEqual(actual_job_ids, expected_job_ids)
 
         # for jobs with version_id
         expected_job_ids = set(['JOB-1', 'JOB-2'])
         results = jobs.select().where(
-            jobs.c.version_id != None).execute().fetchall()
+            jobs.c.version_id.isnot(None)).execute().fetchall()
         actual_job_ids = set(row['id'] for row in results)
         self.assertEqual(actual_job_ids, expected_job_ids)
 

@@ -39,5 +39,5 @@ def _validate_values(object_name, values, keys):
 
 
 def _validate_value(values, key, missing_values):
-    if not key in values:
+    if key not in values:
         missing_values.append(key)

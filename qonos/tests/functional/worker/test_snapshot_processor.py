@@ -371,7 +371,7 @@ class TestSnapshotProcessorJobProcessing(BaseTestSnapshotProcessor):
         fake_imageid = "IMAGE_ID"
         max_retry_count = 1
         self.config(max_retry=max_retry_count, group='snapshot_worker')
-        images = self.image_fixture(fake_imageid, 'QUEUED', server.id)
+        self.image_fixture(fake_imageid, 'QUEUED', server.id)
 
         fake_metadata = dict(image_id=fake_imageid,
                              instance_id=server.id)
@@ -608,7 +608,7 @@ class TestSnapshotProcessorPolling(BaseTestSnapshotProcessor):
                 p.next_timeout = now + p.initial_timeout
                 p.next_update = now + p.update_interval
 
-                #NOTE(venkatesh): unfortunately had to use a protected method
+                # NOTE(venkatesh): unfortunately had to use a protected method
                 # for testing. Else there seems to be no easier way to test
                 # this scenario. we need to fix this as part of refactoring
                 # SnapshotJobProcessor.
@@ -913,7 +913,7 @@ class TestSnapshotProcessorNotifications(BaseTestSnapshotProcessor):
         fake_imageid = "IMAGE_ID"
         max_retry_count = 0
         self.config(max_retry=max_retry_count, group='snapshot_worker')
-        images = self.image_fixture(fake_imageid, 'QUEUED', server.id)
+        self.image_fixture(fake_imageid, 'QUEUED', server.id)
         fake_metadata = dict(image_id=fake_imageid,
                              instance_id=server.id)
         job = self.job_fixture(server.id,

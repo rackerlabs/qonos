@@ -48,8 +48,8 @@ class NovaClientFactory(object):
         self.current_job_id = None
 
     def get_nova_client(self, job):
-        if (self.nova_client is not None and
-            self.current_job_id == job['id']):
+        if(self.nova_client is not None and
+           self.current_job_id == job['id']):
             return self.nova_client
 
         self.current_job_id = None
@@ -70,16 +70,16 @@ class NovaClientFactory(object):
         tenant = job['tenant']
 
         sched_image_ext = novaclient.extension.Extension(
-                            'rax_scheduled_images_python_novaclient_ext',
-                            rax_scheduled_images_python_novaclient_ext)
+            'rax_scheduled_images_python_novaclient_ext',
+            rax_scheduled_images_python_novaclient_ext)
 
         self.nova_client = client.Client(user,
-                                    password,
-                                    project_id=tenant,
-                                    auth_url=auth_url,
-                                    insecure=insecure,
-                                    extensions=[sched_image_ext],
-                                    http_log_debug=debug)
+                                         password,
+                                         project_id=tenant,
+                                         auth_url=auth_url,
+                                         insecure=insecure,
+                                         extensions=[sched_image_ext],
+                                         http_log_debug=debug)
         self.current_job_id = job['id']
 
         return self.nova_client
