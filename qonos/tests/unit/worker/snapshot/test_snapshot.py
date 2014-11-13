@@ -713,7 +713,7 @@ class TestSnapshotProcessor(test_utils.BaseTestCase):
         self.worker.update_job(
             fakes.JOB_ID, 'ERROR', timeout=timeout,
             error_message=mox.IsA(unicode)).AndReturn(
-                {'status': 'ERROR', 'timeout': job['timeout']})
+            {'status': 'ERROR', 'timeout': job['timeout']})
 
         self.mox.StubOutWithMock(utils, 'generate_notification')
 
