@@ -100,7 +100,7 @@ class SnapshotProcessor(worker.JobProcessor):
         self.timeout_backoff_factor = (CONF.snapshot_worker
                                        .job_timeout_backoff_factor)
         self.timeout_worker_stop = datetime.timedelta(
-            CONF.snapshot_worker.job_timeout_worker_stop_sec)
+            seconds=CONF.snapshot_worker.job_timeout_worker_stop_sec)
 
         if not nova_client_factory:
             nova_client_factory = importutils.import_object(
