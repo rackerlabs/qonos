@@ -24,6 +24,14 @@ from qonos.tests import utils as test_utils
 from qonos.worker import worker
 
 
+class FakeProcessorFactory(object):
+    def __init__(self, processor):
+        self.processor = processor
+
+    def __call__(self, *args, **kwargs):
+        return self.processor
+
+
 class TestSingleProcessWorker(test_utils.BaseTestCase):
     def setUp(self):
         super(TestSingleProcessWorker, self).setUp()
@@ -31,8 +39,8 @@ class TestSingleProcessWorker(test_utils.BaseTestCase):
         self.client = mock.Mock()
         self.client_factory.return_value = self.client
         self.processor = mock.Mock()
-        self.worker = worker.SingleProcessWorker(self.client_factory,
-                                                 self.processor)
+        self.worker = worker.SingleProcessWorker(
+            self.client_factory, FakeProcessorFactory(self.processor))
 
     def tearDown(self):
         super(TestSingleProcessWorker, self).tearDown()
@@ -47,7 +55,6 @@ class TestSingleProcessWorker(test_utils.BaseTestCase):
         self.assertEqual('some-guid', self.worker.worker_id)
         self.assertIsNotNone(self.worker.parent_pid)
         self.assertTrue(self.worker.running)
-        self.processor.init_processor.assert_called_once_with(self.worker)
         self.client.create_worker.assert_called_once()
 
     @mock.patch('time.time')
@@ -59,7 +66,9 @@ class TestSingleProcessWorker(test_utils.BaseTestCase):
 
         self.worker.process_job(job)
 
+        self.processor.init_processor.assert_called_once_with(self.worker)
         self.processor.process_job.assert_called_once_with(job)
+        self.processor.cleanup_processor.assert_called_once()
 
     def test_worker_process_job_with_exception(self):
         job = fakes.JOB['job']
@@ -81,8 +90,8 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
         self.client = mock.Mock()
         self.client_factory.return_value = self.client
         self.processor = mock.Mock()
-        self.worker = worker.MultiChildWorker(self.client_factory,
-                                              self.processor)
+        self.worker = worker.MultiChildWorker(
+            self.client_factory, FakeProcessorFactory(self.processor))
 
     def tearDown(self):
         super(TestMultiChildWorker, self).tearDown()
@@ -171,19 +180,6 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
 
         self.assertEqual(3, self.worker._check_children())
 
-    def test_worker_check_children_none_exit2(self):
-        def mock_waitpid(pid, params):
-            return (0, 0)
-
-        self.config(max_child_processes=3, group='worker')
-
-        self.worker.child_pids.add((1, 'job 1'))
-        self.worker.child_pids.add((2, 'job 2'))
-        self.worker.child_pids.add((3, 'job 3'))
-
-        with mock.patch('os.waitpid', side_effect=mock_waitpid):
-            self.assertEqual(3, self.worker._check_children())
-
     def test_worker_check_children_all_exit_normally(self):
         def mock_waitpid(pid, params):
             return (pid, 0)
@@ -246,7 +242,7 @@ class TestWorkerWithMox(test_utils.BaseTestCase):
 
         self.processor = FakeProcessor()
         self.worker = worker.Worker(client_factory,
-                                    processor=self.processor)
+                                    FakeProcessorFactory(self.processor))
 
     def tearDown(self):
         self.mox.UnsetStubs()
@@ -266,6 +262,9 @@ class TestWorkerWithMox(test_utils.BaseTestCase):
         self.client.delete_worker(str(fakes.WORKER_ID))
 
     def test_stop_processor(self):
+        # A bit of short-circuiting since the processor now doesn't get
+        # created until a job is being processed
+        self.worker.processor = self.processor
         self.worker._terminate(42, None)
         self.assertTrue(self.processor.stopping)
 
@@ -280,9 +279,9 @@ class TestWorkerWithMox(test_utils.BaseTestCase):
         self.stubs.Set(time, 'sleep', fake_sleep)
 
         self.worker.run(run_once=True, poll_once=True)
-        self.assertTrue(self.processor.was_init_processor_called(1))
+        self.assertTrue(self.processor.was_init_processor_called(0))
         self.assertTrue(self.processor.was_process_job_called(0))
-        self.assertTrue(self.processor.was_cleanup_processor_called(1))
+        self.assertTrue(self.processor.was_cleanup_processor_called(0))
 
         self.mox.VerifyAll()
 

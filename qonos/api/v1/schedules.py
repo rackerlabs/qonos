@@ -92,7 +92,7 @@ class SchedulesController(object):
                 invalid_params.append('request body needs "action" entity')
 
         if invalid_params:
-            msg = _('The following errors occured with your request: %s') \
+            msg = _('The following errors occurred with your request: %s') \
                 % ', '.join(invalid_params)
             raise webob.exc.HTTPBadRequest(explanation=msg)
 

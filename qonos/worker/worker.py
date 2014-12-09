@@ -18,6 +18,7 @@ import os
 import signal
 import socket
 import time
+import thread
 
 from oslo.config import cfg
 
@@ -31,7 +32,8 @@ LOG = logging.getLogger(__name__)
 # TODO(WORKER) action_type should be queried from the job processor
 worker_opts = [
     cfg.IntOpt('job_poll_interval', default=5,
-               help=_('Interval to poll api for ready jobs in seconds')),
+               help=_('Interval to poll api for ready jobs in seconds. May be'
+                      'updated via SIGHUP.')),
     cfg.StrOpt('api_endpoint', default='localhost',
                help=_('Address of the QonoS API server')),
     cfg.IntOpt('api_port', default=7667,
@@ -44,30 +46,41 @@ worker_opts = [
                       'to use in this worker')),
     cfg.IntOpt('max_child_processes', default=0,
                help=_('The maximum number of child processes to fork. Set to'
-                      '0 to disable forking.')),
+                      '0 to disable forking. May be updated via SIGHUP, but'
+                      'enabling / disabling forking requires restart.')),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(worker_opts, group='worker')
+LOCK = thread.allocate_lock()
 
 
-def Worker(client_factory, processor=None):
-    max_child_processes = CONF.worker.max_child_processes
+def get_config_value(conf_key):
+    LOCK.acquire()
+    value = getattr(CONF.worker, conf_key)
+    LOCK.release()
+    return value
+
+
+def Worker(client_factory, processor_class=None):
+    max_child_processes = get_config_value("max_child_processes")
 
     if max_child_processes > 0:
-        return MultiChildWorker(client_factory, processor)
+        return MultiChildWorker(client_factory, processor_class)
     else:
-        return SingleProcessWorker(client_factory, processor)
+        return SingleProcessWorker(client_factory, processor_class)
 
 
 class WorkerBase(object):
-    def __init__(self, client_factory, processor=None):
-        self.client = client_factory(CONF.worker.api_endpoint,
-                                     CONF.worker.api_port)
-        if not processor:
-            processor = importutils.import_object(CONF.worker.processor_class)
+    def __init__(self, client_factory, processor_class=None):
+        self.client = client_factory(get_config_value("api_endpoint"),
+                                     get_config_value("api_port"))
+        if not processor_class:
+            processor_class = importutils.import_class(
+                get_config_value("processor_class"))
 
-        self.processor = processor
+        self.processor_class = processor_class
+        self.processor = None
         self.worker_id = None
         self.host = socket.gethostname()
         self.running = False
@@ -84,7 +97,8 @@ class WorkerBase(object):
     def _signal_map(self):
         return {
             signal.SIGTERM: self._terminate,
-            signal.SIGHUP: self._terminate,
+            signal.SIGHUP: self._update,
+            signal.SIGUSR1: self._dump_config,
         }
 
     def _terminate(self, signum, frame):
@@ -94,6 +108,31 @@ class WorkerBase(object):
         self.running = False
 
         self._on_terminate(signum)
+
+    def _update(self, signum, frame):
+        LOG.warn(_('[%(worker_tag)s] Received signal %(signum)s - updating') %
+                 {'worker_tag': self.get_worker_tag(),
+                  'signum': str(signum)})
+        if self._can_reload_configuration():
+            self._reload_configuration()
+        else:
+            LOG.warn(_('[%(worker_tag)s] This worker process does not support '
+                       'reloading of configuration values.') %
+                    {'worker_tag': self.get_worker_tag()})
+
+    def _reload_configuration(self):
+        LOG.warn(_('[%(worker_tag)s] Reloading configuration values') %
+                 {'worker_tag': self.get_worker_tag()})
+        LOCK.acquire()
+        CONF.reload_config_files()
+        LOCK.release()
+
+    def _dump_config(self, signum, frame):
+        LOG.warn(_('[%(worker_tag)s] Received signal %(signum)s - '
+                   'reloading configs') %
+                 {'worker_tag': self.get_worker_tag(),
+                  'signum': str(signum)})
+        LOG.warn("Configured max_child_processes: %d" % get_config_value("max_child_processes"))
 
     def _on_terminate(self, signum):
         """
@@ -111,6 +150,17 @@ class WorkerBase(object):
         unregistered from the API.
         """
         pass
+
+    def _can_reload_configuration(self):
+        """
+        Override in subclasses to indicate if the worker (or subprocess)
+        does not support reloading of the configuration.
+
+        Most likely this would be used in child processes since once started
+        the child should probably run to completion using the initial config
+        values when it was started.
+        """
+        return True
 
     def _can_accept_job(self):
         """
@@ -146,7 +196,6 @@ class WorkerBase(object):
 
     def init_worker(self):
         self.running = True
-        self.processor.init_processor(self)
         self.worker_id = self._register_worker()
 
     def _process_job(self, job):
@@ -156,12 +205,18 @@ class WorkerBase(object):
         Invoked by process_job() and child_process_main() methods
         """
         try:
+            self.processor = self.processor_class()
+            self.processor.init_processor(self)
             self.processor.process_job(job)
         except Exception as e:
             msg = _('[%(worker_tag)s] Error processing job: %(job)s')
             LOG.exception(msg % {'worker_tag': self.get_worker_tag(),
                                  'job': job['id']})
             self.update_job(job['id'], 'ERROR', error_message=unicode(e))
+        finally:
+            if self.processor is not None:
+                self.processor.cleanup_processor()
+            self.processor = None
 
     def _run_loop(self, run_once=False, poll_once=False):
         self.init_worker()
@@ -180,8 +235,9 @@ class WorkerBase(object):
 
             # Ensure that we wait at least job_poll_interval between jobs
             time_delta = time_after - time_before
-            if time_delta < CONF.worker.job_poll_interval:
-                time.sleep(CONF.worker.job_poll_interval - time_delta)
+            job_poll_interval = get_config_value("job_poll_interval")
+            if time_delta < job_poll_interval:
+                time.sleep(job_poll_interval - time_delta)
 
             if run_once:
                 self.running = False
@@ -189,7 +245,6 @@ class WorkerBase(object):
         LOG.info(_('[%s] Worker is shutting down') % self.get_worker_tag())
         self._on_shutdown()
         self._unregister_worker()
-        self.processor.cleanup_processor()
 
     def _register_worker(self):
         LOG.info(_('[%(worker_tag)s] Registering worker with pid %(pid)s')
@@ -207,7 +262,7 @@ class WorkerBase(object):
                 LOG.info(msg)
                 return self.worker_id
 
-            time.sleep(CONF.worker.job_poll_interval)
+            time.sleep(get_config_value("job_poll_interval"))
 
     def _unregister_worker(self):
         LOG.info(_('[%s] Unregistering worker.') % self.get_worker_tag())
@@ -218,13 +273,13 @@ class WorkerBase(object):
         job = None
 
         while job is None and self.running:
-            time.sleep(CONF.worker.job_poll_interval)
+            time.sleep(get_config_value("job_poll_interval"))
             LOG.debug(_("[%s] Attempting to get next job from API")
                       % self.get_worker_tag())
             job = None
             with utils.log_warning_and_dismiss_exception(LOG):
-                job = self.client.get_next_job(self.worker_id,
-                                               CONF.worker.action_type)['job']
+                job = self.client.get_next_job(
+                    self.worker_id, get_config_value("action_type"))['job']
 
             if poll_once:
                 break
@@ -260,8 +315,9 @@ class WorkerBase(object):
 
 
 class SingleProcessWorker(WorkerBase):
-    def __init__(self, client_factory, processor=None):
-        super(SingleProcessWorker, self).__init__(client_factory, processor)
+    def __init__(self, client_factory, processor_class=None):
+        super(SingleProcessWorker, self).__init__(client_factory,
+                                                  processor_class)
 
     def process_job(self, job):
         LOG.debug(_('[%(worker_tag)s] Processing job: %(job)s')
@@ -270,15 +326,16 @@ class SingleProcessWorker(WorkerBase):
         self._process_job(job)
 
     def _on_terminate(self, signum):
-        self.processor.stop_processor()
+        if self.processor is not None:
+            self.processor.stop_processor()
 
     def _can_accept_job(self):
         return True
 
 
 class MultiChildWorker(WorkerBase):
-    def __init__(self, client_factory, processor=None):
-        super(MultiChildWorker, self).__init__(client_factory, processor)
+    def __init__(self, client_factory, processor_class=None):
+        super(MultiChildWorker, self).__init__(client_factory, processor_class)
         self.pid = None
         self.child_pids = set()
 
@@ -311,8 +368,11 @@ class MultiChildWorker(WorkerBase):
 
         return tag
 
+    def _can_reload_configuration(self):
+        return self.pid is None
+
     def _on_terminate(self, signum):
-        if self.pid is not None:
+        if self.pid is not None and self.processor is not None:
             self.processor.stop_processor()
 
     def _on_shutdown(self):
@@ -340,7 +400,7 @@ class MultiChildWorker(WorkerBase):
                         'children': count})
 
     def _can_accept_job(self):
-        return self._check_children() < CONF.worker.max_child_processes
+        return self._check_children() < get_config_value("max_child_processes")
 
     def _parse_status(self, stat_tuple):
 

@@ -2,17 +2,30 @@
 debug = True
 # Log file location
 log_file = /var/log/qonos/qonos-worker.log
-
 notification_driver = qonos.openstack.common.notifier.log_notifier
 
+
+# General worker settings
 [worker]
-# Indicates the worker should start as a daemon
-daemonized = True
 # The type of action that this worker handles
 action_type = 'snapshot'
+
 # The class of the processor wrapped by this worker
 processor_class = 'qonos.worker.snapshot.snapshot.SnapshotProcessor'
+
+# Address of the QonoS API server
+api_endpoint = localhost
+
+# Port on which to contact QonoS API server
 api_port = 7667
+
+# Interval to poll api for ready jobs in seconds
+job_poll_interval = 5
+
+# The maximum number of child processes to fork. Set to 0 to disable forking.
+# May be updated via SIGHUP, but enabling / disabling forking requires restart.
+max_child_processes = 0
+
 
 # Processor specific settings
 [snapshot_worker]
@@ -26,11 +39,26 @@ image_poll_interval_sec = 30
 # How often to update the job status, in seconds
 job_update_interval_sec = 300
 
+# Initial timeout value, in seconds
+# job_timeout_initial_value_sec = 3600
+
+# When nearing timeout, extend it by, in seconds
+# job_timeout_extension_sec = 3600
+
+# Extend if timeout is less than threshold, in seconds
+# job_timeout_extension_threshold_sec = 300
+
 # How often to update the job timeout, in minutes
 job_timeout_update_interval_min = 60
 
 # How much to increment the timeout, in minutes
 job_timeout_update_increment_min = 60
+
+# Timeout increment to use when an error occurs, in seconds
+# job_timeout_backoff_increment_sec = 3600
+
+# Timeout multiplier to use when an error occurs
+# job_timeout_backoff_factor = 1
 
 # How many times to update the timeout before considering the job to be failed
 job_timeout_max_updates = 3
@@ -39,9 +67,9 @@ job_timeout_max_updates = 3
 # in seconds
 job_timeout_worker_stop_sec = 300
 
-# The number of times a job may be reassigned when it is detected
-# that a worker has stopped working on it.
+# Maximum number of tries that a job can be processed
 max_retry = 5
+
 
 [nova_client_factory]
 # Common options for either Nova client factory
