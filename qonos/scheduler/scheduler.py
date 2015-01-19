@@ -32,7 +32,6 @@ scheduler_opts = [
                help=_('Interval to poll api for ready jobs in seconds')),
     cfg.StrOpt('api_endpoint', default='localhost'),
     cfg.IntOpt('api_port', default=7667),
-    cfg.BoolOpt('daemonized', default=False),
 ]
 
 CONF = cfg.CONF
@@ -48,16 +47,7 @@ class Scheduler(object):
         LOG.debug(_('Starting qonos scheduler service'))
         self.running = True
 
-        if CONF.scheduler.daemonized:
-            import daemon
-            # NOTE(ameade): We need to preserve all open files for logging
-            open_files = utils.get_qonos_open_file_log_handlers()
-            signal_map = self._signal_map()
-            with daemon.DaemonContext(files_preserve=open_files,
-                                      signal_map=signal_map):
-                self._run_loop(run_once)
-        else:
-            self._run_loop(run_once)
+        self._run_loop(run_once)
 
     def _signal_map(self):
         return {

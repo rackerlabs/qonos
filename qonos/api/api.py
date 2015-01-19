@@ -16,7 +16,6 @@
 
 from oslo.config import cfg
 
-from qonos.common import utils
 from qonos.openstack.common.gettextutils import _
 import qonos.openstack.common.log as logging
 import qonos.openstack.common.wsgi as wsgi
@@ -24,7 +23,6 @@ import qonos.openstack.common.wsgi as wsgi
 LOG = logging.getLogger(__name__)
 
 api_opts = [
-    cfg.BoolOpt('daemonized', default=False),
     cfg.IntOpt('port', default=7667),
     cfg.MultiStrOpt('action_overrides', default=[]),
     cfg.StrOpt('wsgi_log_format',
@@ -57,18 +55,9 @@ class API(object):
         self.register_action_override_cfg_opts()
         wsgi_logger = logging.getLogger('eventlet.wsgi.server')
 
-        if CONF.api.daemonized:
-            import daemon
-            # NOTE(ameade): We need to preserve all open files for logging
-            open_files = utils.get_qonos_open_file_log_handlers()
-            with daemon.DaemonContext(files_preserve=open_files):
-                wsgi.run_server(self.app, CONF.api.port,
-                                log=logging.WritableLogger(wsgi_logger),
-                                log_format=CONF.api.wsgi_log_format)
-        else:
-            wsgi.run_server(self.app, CONF.api.port,
-                            log=logging.WritableLogger(wsgi_logger),
-                            log_format=CONF.api.wsgi_log_format)
+        wsgi.run_server(self.app, CONF.api.port,
+                        log=logging.WritableLogger(wsgi_logger),
+                        log_format=CONF.api.wsgi_log_format)
 
     def register_action_override_cfg_opts(self):
         for action in CONF.api.action_overrides:

@@ -6,8 +6,6 @@ log_file = /var/log/qonos/qonos-worker.log
 notification_driver = qonos.openstack.common.notifier.log_notifier
 
 [worker]
-# Indicates the worker should start as a daemon
-daemonized = True
 # The type of action that this worker handles
 action_type = 'snapshot'
 # The class of the processor wrapped by this worker
