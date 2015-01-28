@@ -30,7 +30,7 @@ import logging
 
 from oslo.config import cfg
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import importutils
 from qonos.openstack.common import local
 

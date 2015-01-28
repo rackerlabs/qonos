@@ -21,7 +21,7 @@ Various conveniences used for migration scripts
 
 import sqlalchemy.types
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 
 

@@ -27,7 +27,7 @@ import signal
 from eventlet.green import subprocess
 from eventlet import greenthread
 
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 from qonos.openstack.common import log as logging
 
 

@@ -24,7 +24,7 @@ from oslo.config import cfg
 
 from qonos.common import exception as exc
 from qonos.common import timeutils
-from qonos.openstack.common.gettextutils import _
+from qonos.openstack.common._i18n import _
 import qonos.openstack.common.log as logging
 from qonos.openstack.common.notifier import api as notifier_api
 
