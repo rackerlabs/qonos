@@ -33,7 +33,7 @@ import os
 import urlparse
 
 from migrate.versioning.repository import Repository
-from oslo.config import cfg
+from oslo_config import cfg
 import sqlalchemy
 
 import qonos.db.migration as migration

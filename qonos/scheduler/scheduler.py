@@ -17,7 +17,7 @@
 import signal
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.common import timeutils
 from qonos.common import utils

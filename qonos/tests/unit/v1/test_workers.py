@@ -18,7 +18,7 @@ import datetime
 import uuid
 import webob.exc
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.api.v1 import workers
 from qonos.common import exception

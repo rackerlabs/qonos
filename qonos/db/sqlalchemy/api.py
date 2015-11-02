@@ -23,7 +23,7 @@ import inspect
 import logging
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
 import sqlalchemy
 import sqlalchemy.orm as sa_orm
 import sqlalchemy.sql as sa_sql

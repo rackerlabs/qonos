@@ -18,7 +18,7 @@ import datetime
 from operator import itemgetter
 import random
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.common import config
 from qonos.common import timeutils

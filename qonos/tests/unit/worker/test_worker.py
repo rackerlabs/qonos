@@ -48,7 +48,7 @@ class TestSingleProcessWorker(test_utils.BaseTestCase):
         self.assertIsNotNone(self.worker.parent_pid)
         self.assertTrue(self.worker.running)
         self.processor.init_processor.assert_called_once_with(self.worker)
-        self.client.create_worker.assert_called_once()
+        self.assertEqual(1, self.client.create_worker.call_count)
 
     @mock.patch('time.time')
     def test_worker_process_job(self, mtime_time):
@@ -101,7 +101,7 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
         job = fakes.JOB['job']
         self.worker.process_job(job)
 
-        mos_fork.assert_called_once()
+        self.assertEqual(1, mos_fork.call_count)
         self.assertEquals(0, mos_waitpid.call_count)
         mos_exit.assert_called_once_with(0)
 
@@ -118,7 +118,7 @@ class TestMultiChildWorker(test_utils.BaseTestCase):
         self.worker.process_job(job)
 
         expected_child_pid = 1234
-        mos_fork.assert_called_once()
+        self.assertEqual(1, mos_fork.call_count)
         self.assertEquals(0, mos_exit.call_count)
 
         expected = set([(expected_child_pid, job['id'])])
