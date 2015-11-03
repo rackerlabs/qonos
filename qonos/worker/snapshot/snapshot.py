@@ -142,6 +142,11 @@ class SnapshotProcessor(worker.JobProcessor):
             timeutils.parse_isotime(job['hard_timeout']))
         hard_timed_out = hard_timeout <= self._get_utcnow()
         if hard_timed_out:
+            LOG.debug(_("[%s]Attempting to process retention for HARD TIMEDOUT"
+                        " job: %s") % (self.get_worker_tag(), job_id))
+            self._process_retention(self._get_instance_id(job),
+                                    self.current_job['schedule_id'])
+
             msg = ('Job %(job_id)s has reached/exceeded its'
                    ' hard timeout: %(hard_timeout)s.' %
                    {'job_id': job_id, 'hard_timeout': job['hard_timeout']})
@@ -152,6 +157,11 @@ class SnapshotProcessor(worker.JobProcessor):
 
         max_retried = job['retry_count'] > self.max_retry
         if max_retried:
+            LOG.debug(_("[%s]Attempting to process retention for MAX RETRIED "
+                        "job: %s") % (self.get_worker_tag(), job_id))
+            self._process_retention(self._get_instance_id(job),
+                                    self.current_job['schedule_id'])
+
             msg = ('Job %(job_id)s has reached/exceeded its'
                    ' max_retry count: %(retry_count)s.' %
                    {'job_id': job_id, 'retry_count': job['retry_count']})

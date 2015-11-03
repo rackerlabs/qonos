@@ -854,6 +854,87 @@ class TestSnapshotProcessorRetentionProcessing(BaseTestSnapshotProcessor):
             # self.assertTrue(processor.qonosclient.delete_schedule.called)
             self.assertEqual('DONE', job['status'])
 
+    def test_process_retention_for_hard_timedout_job(self):
+        server = self.server_instance_fixture("INSTANCE_ID", "test",
+                                              retention=2)
+
+        now = timeutils.utcnow()
+        expired_hard_timeout = now - datetime.timedelta(hours=4)
+        expired_hard_timeout = timeutils.strtime(expired_hard_timeout)
+        job = self.job_fixture(server.id, hard_timeout=expired_hard_timeout)
+
+        existing_snapshot_images = [
+            self.image_fixture('OLD_IMAGE_01', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_02', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_03', 'ACTIVE', server.id),
+        ]
+
+        current_image = self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)
+        all_instance_images = [current_image] + existing_snapshot_images
+
+        with TestableSnapshotProcessor(job, server,
+                                       [current_image]) as processor:
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
+            processor.process_job(job)
+
+            self.assertEqual(2, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
+                [mock.call('OLD_IMAGE_02'), mock.call('OLD_IMAGE_01')])
+
+            self.assert_update_job_statuses(processor, ['HARD_TIMED_OUT'])
+            self.assertEqual('HARD_TIMED_OUT', job['status'])
+
+            error_msg = ('Job %(job_id)s has reached/exceeded its'
+                         ' hard timeout: %(hard_timeout)s.' %
+                         {'job_id': job['id'],
+                          'hard_timeout': job['hard_timeout']})
+            expected_status_values = {
+                'status': 'HARD_TIMED_OUT',
+                'error_message': error_msg
+            }
+            self.assert_job_status_values(processor, expected_status_values)
+
+    def test_process_retention_for_max_retried_job(self):
+        server = self.server_instance_fixture("INSTANCE_ID", "test",
+                                              retention=2)
+        max_retry_count = 1
+        self.config(max_retry=max_retry_count, group='snapshot_worker')
+
+        existing_snapshot_images = [
+            self.image_fixture('OLD_IMAGE_01', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_02', 'ACTIVE', server.id),
+            self.image_fixture('OLD_IMAGE_03', 'ACTIVE', server.id),
+        ]
+        current_image = self.image_fixture('IMAGE_ID', 'ACTIVE', server.id)
+
+        fake_metadata = dict(image_id=current_image.id, instance_id=server.id)
+        job = self.job_fixture(server.id, retry_count=max_retry_count + 1,
+                               metadata=fake_metadata)
+        all_instance_images = [current_image] + existing_snapshot_images
+
+        with TestableSnapshotProcessor(job, server,
+                                       [current_image]) as processor:
+            processor.nova_client.images.list = mock.Mock(
+                mock.ANY, return_value=all_instance_images)
+            processor.process_job(job)
+
+            self.assertEqual(2, processor.nova_client.images.delete.call_count)
+            processor.nova_client.images.delete.has_calls(
+                [mock.call('OLD_IMAGE_02'), mock.call('OLD_IMAGE_01')])
+
+            self.assert_update_job_statuses(processor, ['MAX_RETRIED'])
+            self.assertEqual('MAX_RETRIED', job['status'])
+            error_msg = ('Job %(job_id)s has reached/exceeded its'
+                         ' max_retry count: %(retry_count)s.' %
+                         {'job_id': job['id'],
+                          'retry_count': job['retry_count']})
+            expected_status_values = {
+                'status': 'MAX_RETRIED',
+                'error_message': error_msg
+            }
+            self.assert_job_status_values(processor, expected_status_values)
+
 
 class TestSnapshotProcessorNotifications(BaseTestSnapshotProcessor):
 
