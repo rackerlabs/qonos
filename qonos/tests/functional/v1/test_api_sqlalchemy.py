@@ -16,7 +16,7 @@
 
 import sys
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.tests.functional.v1 import base
 from qonos.tests import utils as utils

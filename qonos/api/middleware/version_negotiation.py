@@ -21,7 +21,7 @@ and/or Accept headers and attempts to negotiate an API controller to
 return.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.api import versions
 from qonos.openstack.common._i18n import _

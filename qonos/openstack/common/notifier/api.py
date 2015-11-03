@@ -15,7 +15,7 @@
 
 import uuid
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.openstack.common import context
 from qonos.openstack.common._i18n import _

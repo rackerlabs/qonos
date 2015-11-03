@@ -20,7 +20,7 @@ import mock
 import traceback as tb
 
 from novaclient import exceptions
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.common import exception
 from qonos.common import timeutils

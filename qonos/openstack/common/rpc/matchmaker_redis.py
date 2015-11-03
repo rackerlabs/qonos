@@ -18,7 +18,7 @@ The MatchMaker classes should accept a Topic or Fanout exchange key and
 return keys for direct exchanges, per (approximate) AMQP parlance.
 """
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.openstack.common import importutils
 from qonos.openstack.common import log as logging

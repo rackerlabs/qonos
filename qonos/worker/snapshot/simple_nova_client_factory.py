@@ -16,7 +16,7 @@
 
 import novaclient.extension
 from novaclient.v1_1 import client
-from oslo.config import cfg
+from oslo_config import cfg
 import rax_scheduled_images_python_novaclient_ext
 
 import qonos.openstack.common.log as logging

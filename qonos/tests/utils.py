@@ -18,7 +18,7 @@ import inspect
 import stubout
 import unittest2
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from qonos.common import config
 
